@@ -1,0 +1,103 @@
+
+Installation Guide for Big Data Stack and Tools on Ubuntu
+
+1. Apache Kafka (2.6.0)
+1. Download Kafka:
+   wget https://archive.apache.org/dist/kafka/2.6.0/kafka_2.12-2.6.0.tgz
+2. Extract the archive:
+   tar -xvzf kafka_2.12-2.6.0.tgz
+   mv kafka_2.12-2.6.0 /usr/local/kafka
+3. Start Zookeeper and Kafka:
+   cd /usr/local/kafka
+   bin/zookeeper-server-start.sh config/zookeeper.properties &
+   bin/kafka-server-start.sh config/server.properties &
+
+2. Apache HBase (1.2.6)
+1. Download HBase:
+   wget https://archive.apache.org/dist/hbase/1.2.6/hbase-1.2.6-bin.tar.gz
+2. Extract the archive:
+   tar -xvzf hbase-1.2.6-bin.tar.gz
+   mv hbase-1.2.6 /usr/local/hbase
+3. Configure hbase-site.xml in the conf directory:
+   <configuration>
+       <property>
+           <name>hbase.rootdir</name>
+           <value>file:///usr/local/hbase</value>
+       </property>
+       <property>
+           <name>hbase.zookeeper.property.dataDir</name>
+           <value>/usr/local/hbase/zookeeper</value>
+       </property>
+   </configuration>
+4. Start HBase:
+   /usr/local/hbase/bin/start-hbase.sh
+
+3. Apache Hadoop (2.7.0)
+1. Download Hadoop:
+   wget https://archive.apache.org/dist/hadoop/core/hadoop-2.7.0/hadoop-2.7.0.tar.gz
+2. Extract the archive:
+   tar -xvzf hadoop-2.7.0.tar.gz
+   mv hadoop-2.7.0 /usr/local/hadoop
+3. Configure Hadoop environment:
+   Add to .bashrc:
+   export HADOOP_HOME=/usr/local/hadoop
+   export PATH=$PATH:$HADOOP_HOME/bin:$HADOOP_HOME/sbin
+   source ~/.bashrc
+4. Initialize HDFS and start Hadoop:
+   hdfs namenode -format
+   start-dfs.sh
+
+4. Apache Spark (3.3.4)
+1. Download Spark:
+   wget https://archive.apache.org/dist/spark/spark-3.3.4/spark-3.3.4-bin-hadoop2.7.tgz
+2. Extract the archive:
+   tar -xvzf spark-3.3.4-bin-hadoop2.7.tgz
+   mv spark-3.3.4-bin-hadoop2.7 /usr/local/spark
+3. Set Spark environment variables:
+   Add to .bashrc:
+   export SPARK_HOME=/usr/local/spark
+   export PATH=$PATH:$SPARK_HOME/bin
+   source ~/.bashrc
+4. Start Spark:
+   spark-shell
+
+5. PostgreSQL Database
+1. Install PostgreSQL:
+   sudo apt update
+   sudo apt install postgresql postgresql-contrib
+2. Start PostgreSQL:
+   sudo systemctl start postgresql
+3. Log in and create a database:
+   sudo -i -u postgres
+   psql
+   CREATE DATABASE your_database;
+
+6. Python (version 3.12.3)
+1. Install Python:
+   sudo apt update
+   sudo apt install python3.12
+2. Verify the installation:
+   python3 --version
+
+7. Java 17 and Spring Boot
+1. Install Java 17:
+   sudo apt install openjdk-17-jdk
+2. Verify Java installation:
+   java -version
+3. Install Spring Boot CLI:
+   sdk install springboot
+
+8. XGBoost
+1. Install XGBoost using pip:
+   python3 -m pip install xgboost
+
+9. Apache Airflow
+1. Install Apache Airflow:
+   python3 -m pip install apache-airflow
+2. Initialize the Airflow database and start the webserver:
+   airflow db init
+   airflow webserver --port 8080 &
+
+10. Power BI Desktop
+Power BI Desktop is not directly available on Linux, but you can install it using Wine or set up a virtual machine with Windows.
+Alternatively, you can access Power BI through its web version via your browser.
