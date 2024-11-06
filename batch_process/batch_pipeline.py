@@ -1,7 +1,8 @@
 import time
+
 from batch_process.hadoop.hadoop_scripts.hadoop_consumer import consume_hdfs
 import threading
-from stream_process.kafka.kafka_scripts.send_fake_data  import send_data
+from stream_process.kafka.kafka_scripts.send_fake_data import send_data
 
 
 def producer_thread():
