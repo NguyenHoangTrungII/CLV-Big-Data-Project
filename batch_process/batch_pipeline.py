@@ -18,8 +18,10 @@ def producer_thread():
             print(f"Error in producer_thread: {str(e)}")
 
 def consumer_thread():
+    print("Starting to consume from Kafka...")  # Add this log
     while True:
         try:
+            print("Consuming data from HDFS...")
             consume_hdfs()
             # Sleep for a short interval before consuming the next message
             time.sleep(3)
