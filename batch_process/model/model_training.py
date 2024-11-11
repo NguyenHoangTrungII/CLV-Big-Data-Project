@@ -4,7 +4,6 @@ CLV-Big-Data-Project
 """
 import pandas as pd
 import numpy as np
-from google.colab import drive
 from sklearn.preprocessing import MinMaxScaler
 from keras.models import Sequential
 from keras.layers import LSTM, Dense
@@ -14,7 +13,8 @@ import tensorflow as tf
 drive.mount('/content/drive')
 
 # Đường dẫn tới tệp Excel trong Google Drive
-file_path = '/content/drive/MyDrive/Data/Online Retail.xlsx'
+file_path = './data/raw/Online_Retail.xlsx'  
+
 
 # Đọc dữ liệu từ tệp Excel
 df = pd.read_excel(file_path)
@@ -76,7 +76,7 @@ def create_dataset(data, time_step=1):
     return np.array(X), np.array(y)
 
 # Định nghĩa bước thời gian
-time_step = 25
+time_step = 1
 
 # Tạo tập train, val và test
 X_train, y_train = create_dataset(train_data, time_step)
