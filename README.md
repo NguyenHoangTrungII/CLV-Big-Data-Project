@@ -20,7 +20,7 @@
 
 
 ## Architecture
-![image](https://github.com/user-attachments/assets/70aa6cac-e015-43c9-a5d1-ea69621d9106)
+![image](https://github.com/user-attachments/assets/2456c2f9-dbf2-42a9-80c6-6ea4dc05ea37)
 
 
 ## Main Workflow
