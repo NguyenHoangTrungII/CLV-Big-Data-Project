@@ -1,6 +1,6 @@
 import time
 
-from stream_process.kafka.kafka_scripts.consume_data import consume
+from stream_process.kafka.kafka_scripts.consume_data import consume_and_predict
 import threading
 from stream_process.kafka.kafka_scripts.send_fake_data import send_data
 
@@ -23,7 +23,11 @@ def consumer_thread():
     while True:
         try:
             # Call the consumer function to consume and process messages
-            consume()
+            # consume()
+            consume_and_predict()
+
+            # print(df_with_predictions[['InvoiceNo', 'CLV_Prediction']])  # Example: Print InvoiceNo and predicted CLV
+
 
             # Optional: Short pause before consuming the next message
             time.sleep(3)

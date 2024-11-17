@@ -108,7 +108,7 @@ def store_data_in_hdfs(transaction_data):
 
     # Connect to HDFS
     hdfs_host = 'localhost'
-    hdfs_port = 9870
+    hdfs_port = 50070
     client = InsecureClient(f'http://{hdfs_host}:{hdfs_port}', user='nhtrung')
 
     # Ensure the directory exists

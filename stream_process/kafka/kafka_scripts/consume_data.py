@@ -1,121 +1,59 @@
-import time
-from kafka import KafkaConsumer
-import json
 import pandas as pd
-import numpy as np
 from tensorflow import keras
-import os
-from keras.layers import LSTM, Dense
-# Define custom_objects for standard layers just in case Keras is treating them as custom
-custom_objects = {
-    'LSTM': LSTM,
-    'Dense': Dense
-}
-# Get the current directory
-current_dir = os.path.dirname(os.path.abspath(__file__)) 
+import json
+from kafka import KafkaConsumer
+from batch_process.spark.spark_scripts.realtime_model_processing import preprocess_data
 
-# Construct the path to the model file
-model_path = os.path.join(current_dir, 'CLV.h5')
-
-print("Model path", {model_path})
-# Load the pre-trained CLV model
+# Load the pre-trained model
 try:
-    model = keras.models.load_model('/home/nhtrung/main/CLV-Big-Data-Project/stream_process/model/CLV.h5', 
-                       custom_objects=custom_objects, 
-                       compile=False)
+    model = keras.models.load_model('/home/nhtrung/CLV-Big-Data-Project/stream_process/model/CLV_V3.keras', compile=False)
     print("Model loaded successfully.")
-    
 except Exception as e:
     print(f"Error loading model: {e}")
-    exit ()
+    exit()
 
-# time_step = 5
-# buffer_size = 10  # Adjust as needed based on your model's needs
-# data_buffer = []
+# Kafka Consumer Setup
+KAFKA_TOPIC = 'CLV_system_nhtrung'
+KAFKA_BOOTSTRAP_SERVERS = 'localhost:9092'
+consumer = KafkaConsumer(KAFKA_TOPIC, 
+                         bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS, 
+                         value_deserializer=lambda x: json.loads(x.decode('utf-8')))
 
-# # Function to preprocess data
-# def preprocess_data(data):
-#     data['InvoiceDate'] = pd.to_datetime(data['InvoiceDate'])
-#     data['InvoiceDate'] = data['InvoiceDate'].astype('int64') // 10**9
-#     data['TotalValue'] = data['Quantity'] * data['UnitPrice']
-#     # ... handle other preprocessing based on your model requirements ...
-#     return data
+def predict_clv(processed_data):
+    # Ensure the dataframe has the necessary features for prediction
+    features = processed_data[['Quantity', 'UnitPrice','hour','hour','hour','hour','hour', 'hour', 'dayofweek', 'weekend', 'Revenue']]
 
-# # Function to create time-step sequences for LSTM
-# def create_dataset(data, time_step=5):
-#     X, y = [], []
-#     for i in range(len(data) - time_step):
-#         X.append(data[i:i + time_step, 0])
-#         y.append(data[i + time_step, 0])
-#     return np.array(X), np.array(y)
+    # Convert to numpy array if needed
+    features = features.values
+    
+    # Make predictions using the model
+    prediction = model.predict(features)
+    
+    # Add the CLV predictions to the dataframe
+    processed_data['CLV_Prediction'] = prediction
+    
+    return processed_data
 
-# # Convert data for LSTM format
-# # def format_for_prediction(data, time_step=5):
-# #     data = data['TotalValue'].values.reshape(-1, 1)  # Adjust to expected format
-# #     X, _ = create_dataset(data, time_step)
-# #     return X.reshape(X.shape[0], X.shape[1], 1)
+def consume_and_predict():
+    print("Starting to consume and predict...")
+    for message in consumer:
+        if message.value is None:
+            print("Received null message, skipping processing.")
+            continue
 
-# def format_for_prediction(data, time_step=5):
-#     # Get the 'TotalValue' column as a numpy array
-#     total_value = data['TotalValue'].values
+        # Step 1: Preprocess the incoming message
+        processed_data = preprocess_data(message.value)
+        if processed_data is None or processed_data.empty:
+            print("No data after preprocessing, skipping prediction.")
+            continue
 
-#     # Reshape into a 2D array with one column
-#     total_value = total_value.reshape(-1, 1)
+        print(f"Processing data for InvoiceNo: {processed_data['InvoiceNo'].iloc[0]}")
 
-#     # Create time-step sequences
-#     X, _ = create_dataset(total_value, time_step)
+        # Step 2: Predict CLV for the preprocessed data
+        df_with_predictions = predict_clv(processed_data)
 
-#     # Reshape for LSTM input
-#     return X.reshape(X.shape[0], X.shape[1], 1)
+        # Step 3: Print or store the predictions
+        print(df_with_predictions[['InvoiceNo', 'CLV_Prediction']])
 
-# # Kafka consumer setup
-# consumer = KafkaConsumer(
-#     'CLV_system_nhtrung',
-#     bootstrap_servers='localhost:9092',
-#     auto_offset_reset='earliest',
-#     value_deserializer=lambda v: json.loads(v.decode('utf-8'))
-# )
-
-# def consume():
-#     # Process messages from Kafka
-#     for message in consumer:
-#         try:
-#             # Convert message to DataFrame
-#             raw_data = pd.DataFrame([message.value], columns=['InvoiceNo', 'StockCode', 'Description', 'Quantity', 'InvoiceDate', 'UnitPrice', 'CustomerID', 'Country'])   ;
-#             # Preprocess data
-#             # data = preprocess_data(raw_data)
-            
-#             data_buffer.append(raw_data)
-
-#             # # Format data for prediction
-#             # X = format_for_prediction(data)
-#             # print(f"Data fprmat predict {X}")
-#             # time.sleep(3)
-
-#             # # Make prediction
-#             # prediction = model.predict(X)
-            
-#             # Log or output the prediction
-#             # print(f"Prediction for data {data['CustomerID'].values[0]}: {prediction[-1][0]}")
-#             if len(data_buffer) >= buffer_size:
-#                 # Combine data from the buffer into a single DataFrame
-#                 combined_data = pd.concat(data_buffer)
-
-#                 # Preprocess data
-#                 combined_data = preprocess_data(combined_data)
-
-#                 # Format data for prediction
-#                 X = format_for_prediction(combined_data, time_step)
-
-#                 # Make prediction
-#                 prediction = model.predict(X)
-
-#                 # # Log or output the prediction
-#                 print(f"Prediction for data {combined_data['CustomerID'].values[-1]}: {prediction[-1][0]}")
-
-#                 # Clear the buffer
-#                 data_buffer.clear()
-                
-#         except Exception as e:
-#             print(f"Error processing message {message}: {e}")
-
+if __name__ == "__main__":
+    consume_and_predict()

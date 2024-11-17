@@ -1,21 +1,16 @@
-# from pyspark.sql import SparkSession
+# batch_layer.py
 
-# spark = SparkSession.builder.appName("BatchProcessing").getOrCreate()
-# data_path = "hdfs://localhost:9000/user/hadoop/product_data/"
-
-# def process_data():
-#     df = spark.read.json(data_path)
-#     processed_df = df.groupBy("product_id").count()  # Ví dụ: Đếm số lượng sản phẩm
-#     processed_df.write.mode("overwrite").parquet("hdfs://localhost:9000/user/hadoop/processed_data/")
-
-# if __name__ == "__main__":
-#     process_data()
-
-from spark.spark_scripts.spark_processing import spark_processing
-
-from postgres.save_preprocessed_data import  save_data
-
+from batch_process.spark.spark_scripts.spark_processing import clean_and_process_data
+from batch_process.postgres.save_preprocessed_data import save_data
 
 def batch_layer():
-    data = spark_processing()
-    save_data(data)
+    try:
+        print("Starting Spark processing...")
+        data = clean_and_process_data()  # Fetch data using Spark
+        print("Spark processing completed.")
+
+        print("Saving data to PostgreSQL...")
+        save_data(data)  # Save the processed data to PostgreSQL
+        print("Data saved successfully.")
+    except Exception as e:
+        print(f"Error in batch_layer: {str(e)}")
