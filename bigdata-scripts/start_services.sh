@@ -4,7 +4,8 @@
 export JAVA_HOME=${JAVA_HOME:-/usr/lib/jvm/java-8-openjdk-amd64}
 export HADOOP_HOME=${HADOOP_HOME:-/usr/local/hadoop}
 export KAFKA_HOME=${KAFKA_HOME:-/usr/local/kafka}
-export PATH=$PATH:$JAVA_HOME/bin:$HADOOP_HOME/bin:$HADOOP_HOME/sbin:$KAFKA_HOME/bin
+export HBASE_HOME=${HBASE_HOME:-/usr/local/hbase}
+export PATH=$PATH:$JAVA_HOME/bin:$HADOOP_HOME/bin:$HADOOP_HOME/sbin:$KAFKA_HOME/bin:$HBASE_HOME/bin
 
 # Kiểm tra biến môi trường
 if [ -z "$HADOOP_HOME" ] || [ -z "$KAFKA_HOME" ]; then
@@ -30,6 +31,16 @@ sleep 2
 # Khởi động Kafka
 echo "Starting Kafka..."
 $KAFKA_HOME/bin/kafka-server-start.sh -daemon $KAFKA_HOME/config/server.properties
+sleep 2
+
+# Khởi động HBase
+echo "Starting HBase..."
+start-hbase.sh
+sleep 2
+
+# Khởi động HBase Thrift Server
+echo "Starting HBase Thrift..."
+start-hbase-thrift.sh
 sleep 2
 
 echo "All services started successfully!"
