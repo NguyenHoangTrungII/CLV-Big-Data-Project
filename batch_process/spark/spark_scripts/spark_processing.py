@@ -63,9 +63,10 @@
 #     main()
 
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, regexp_replace, to_timestamp, hour, dayofweek, when
+from pyspark.sql.functions import col, regexp_replace, to_timestamp, hour, dayofweek, when, unix_timestamp
 from pyspark.sql.types import IntegerType, FloatType
 
+from batch_process.postgres.save_preprocessed_data import save_data_to_postgresql
 
 def create_spark_session():
     """
@@ -74,6 +75,8 @@ def create_spark_session():
     spark = SparkSession.builder \
         .appName("Data Cleaning and Transformation") \
         .config("spark.hadoop.fs.defaultFS", "hdfs://namenode:9000") \
+        .config("spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.1.2") \
+        .config("spark.jars.packages", "org.postgresql:postgresql:42.5.0") \
         .getOrCreate()
     return spark
 
@@ -104,6 +107,7 @@ def clean_and_transform_data(df):
     # Remove null values
     df = df.dropna(subset=["InvoiceDate", "Quantity", "UnitPrice"])
 
+
     # Clean and configure columns
     df = df.withColumn("InvoiceDate", regexp_replace(col("InvoiceDate"), "[^0-9\-: ]", ""))
     df = df.withColumn("InvoiceDate", to_timestamp(col("InvoiceDate"), "yyyy-MM-dd HH:mm:ss"))
@@ -114,7 +118,8 @@ def clean_and_transform_data(df):
         .withColumn("hour", hour(col("InvoiceDate"))) \
         .withColumn("dayofweek", dayofweek(col("InvoiceDate"))) \
         .withColumn("weekend", when(dayofweek(col("InvoiceDate")).isin(6, 7), 1).otherwise(0)) \
-        .withColumn("Revenue", col("Quantity") * col("UnitPrice"))
+        .withColumn("Revenue", col("Quantity") * col("UnitPrice")) \
+        .withColumn("InvoiceDate", unix_timestamp(col("InvoiceDate")).cast("double"))
 
     return df
 
@@ -137,8 +142,8 @@ def main():
     spark = create_spark_session()
 
     # File paths for input/output in HDFS
-    input_path = "hdfs://namenode:9000/path/to/data.csv"
-    output_path = "hdfs://namenode:9000/path/to/processed_data.csv"
+    input_path = "hdfs://localhost:9000/batch-layer/raw_data.csv"
+    output_path = "hdfs://localhost:9000/path/to/processed_data.csv"
 
     # Read data from HDFS
     print("Reading data from HDFS...")
@@ -154,7 +159,8 @@ def main():
 
     # Save the processed data to HDFS
     print("Saving the processed data to HDFS...")
-    save_data_to_hdfs(processed_df, output_path)
+    # save_data_to_hdfs(processed_df, output_path)
+    save_data_to_postgresql(processed_df)
 
     print("Processing complete!")
 
