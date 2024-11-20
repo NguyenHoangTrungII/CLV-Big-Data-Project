@@ -40,7 +40,7 @@ sleep 2
 
 # Khởi động HBase Thrift Server
 echo "Starting HBase Thrift..."
-start-hbase-thrift.sh
+$HBASE_HOME/bin/hbase-daemon.sh start thrift
 sleep 2
 
 echo "All services started successfully!"

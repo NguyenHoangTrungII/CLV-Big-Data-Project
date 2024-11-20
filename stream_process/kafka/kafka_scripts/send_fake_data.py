@@ -7,7 +7,7 @@ import time
 # Hàm chuyển đổi `Timestamp` sang chuỗi
 def serialize_data(data):
     if isinstance(data, pd.Timestamp):
-        return data.isoformat()  # Chuyển sang định dạng chuỗi ISO 8601
+        return data.strftime('%Y-%m-%d %H:%M:%S')  # Chuyển sang định dạng phù hợp với Spark
     elif isinstance(data, dict):
         return {key: serialize_data(value) for key, value in data.items()}
     elif isinstance(data, list):
