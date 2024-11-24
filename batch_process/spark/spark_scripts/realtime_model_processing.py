@@ -1,84 +1,10 @@
-# import pandas as pd
-# import json
-# from kafka import KafkaConsumer
-# from pyspark.sql import SparkSession
-# from pyspark.sql.functions import col, to_date, hour, dayofweek, when
-
-# # Kafka configuration
-# KAFKA_TOPIC = 'CLV_system_nhtrung'
-# KAFKA_BOOTSTRAP_SERVERS = 'localhost:9092'
-
-# spark = SparkSession.builder \
-#     .appName("CLV_Prediction") \
-#     .config("spark.executor.memory", "2g") \
-#     .config("spark.driver.memory", "2g") \
-#     .getOrCreate()
-
-
-# # Kafka Consumer Setup
-# consumer = KafkaConsumer(KAFKA_TOPIC, 
-#                          bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS, 
-#                          value_deserializer=lambda x: json.loads(x.decode('utf-8'))
-                             
-#                         )
-
-# # Define schema for incoming Kafka data (assuming JSON format)
-# # Here we do not need the schema for Spark DataFrame, just for structured reference.
-# def preprocess_data(message):
-#     # Convert message to DataFrame
-#     df = pd.DataFrame([message])
-        
-#     # Convert 'InvoiceDate' to datetime format
-#     df['InvoiceDate'] = pd.to_datetime(df['InvoiceDate'], errors='coerce')
-
-#     # Extract date and time-related features
-#     df['date'] = df['InvoiceDate'].dt.date
-#     df['hour'] = df['InvoiceDate'].dt.hour
-#     df['dayofweek'] = df['InvoiceDate'].dt.dayofweek
-#     df['weekend'] = df['dayofweek'].apply(lambda x: 1 if x >= 5 else 0)
-    
-#     # Calculate Revenue
-#     df['Revenue'] = df['Quantity'] * df['UnitPrice']
-    
-#     # Remove rows with invalid or missing CustomerID
-#     df_cleaned = df.dropna(subset=['CustomerID'])
-#     df_cleaned['CustomerID'] = df_cleaned['CustomerID'].astype(str)
-
-#     # Handle other columns with potential missing values
-#     df_cleaned['Description'] = df_cleaned['Description'].fillna('')
-#     df_cleaned['StockCode'] = df_cleaned['StockCode'].fillna('')
-#     df_cleaned['InvoiceNo'] = df_cleaned['InvoiceNo'].fillna(0)
-    
-#     # Return the processed data
-#     return df_cleaned
-
-# # Kafka Consumer Loop for continuous data consumption
-# def consume_and_preprocess():
-#     for message in consumer:
-#         if message.value is None:
-#             print("Received null message, skipping processing.")
-#             continue  # Skip this message if it's null
-
-#         processed_data = preprocess_data(message.value)  # Preprocess each message and return the processed DataFrame
-#         print(f"Processed Data:\n{processed_data.head()}")  # Show the top rows of the processed data
-#         return processed_data
-
-# if __name__ == "__main__":
-#     consume_and_preprocess()
-
-
-
-from pyspark.sql import SparkSession
-from pyspark.sql.functions import regexp_replace, col, from_json, to_timestamp, hour, dayofweek, when, expr
-from pyspark.sql.types import StructType, StructField, StringType, IntegerType, FloatType, TimestampType
-
-
 import time
 import pandas as pd
 from tensorflow import keras
 import json
-from kafka import KafkaConsumer
-
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import regexp_replace, col, from_json, to_timestamp, hour, dayofweek, when, expr
+from pyspark.sql.types import StructType, StructField, StringType, IntegerType, FloatType, TimestampType
 
 # Kafka configuration
 KAFKA_TOPIC = 'CLV_system_nhtrung'
@@ -89,29 +15,7 @@ spark = SparkSession.builder \
    .config("spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.1.2") \
    .getOrCreate()
 
-
-# def preprocess_data(df):
-#    """
-#    Tiền xử lý DataFrame Spark:
-#    - Chuyển đổi 'InvoiceDate' sang định dạng ngày.
-#    - Tạo các cột đặc trưng: 'hour', 'dayofweek', 'weekend'.
-#    - Tính 'Revenue' từ 'Quantity' và 'UnitPrice'.
-#    - Xử lý missing values và chuyển kiểu dữ liệu.
-#    """
-#    df_processed = df \
-#        .withColumn("InvoiceDate", to_date(col("InvoiceDate"), "yyyy-MM-dd HH:mm:ss")) \
-#        .withColumn("hour", hour(col("InvoiceDate"))) \
-#        .withColumn("dayofweek", dayofweek(col("InvoiceDate"))) \
-#        .withColumn("weekend", when(col("dayofweek") >= 6, 1).otherwise(0)) \
-#        .withColumn("Revenue", col("Quantity") * col("UnitPrice")) \
-#        .withColumn("CustomerID", col("CustomerID").cast(StringType())) \
-#        .fillna({'Description': '', 'StockCode': '', 'InvoiceNo': '0'}) \
-#        .dropna(subset=["CustomerID"])
- 
-#    return df_processed
-
-# Thay vì khởi tạo mô hình ngay tại đây, di chuyển vào một hàm
-model = None  # Khai báo biến global
+model = None  
 
 def load_model_once():
     global model

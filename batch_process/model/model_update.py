@@ -1,7 +1,6 @@
 from tensorflow import keras
 import os
 from tensorflow.keras.optimizers import Adam
-
 from tensorflow.keras.layers import TFSMLayer
 
 # Define early stopping
