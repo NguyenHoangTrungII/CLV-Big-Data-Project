@@ -1,0 +1,157 @@
+version: '3.8'
+
+services:
+
+  zookeeper:
+      image: confluentinc/cp-zookeeper
+      container_name: zookeeper
+      environment:
+        ZOOKEEPER_CLIENT_PORT: 2181
+        ZOOKEEPER_TICK_TIME: 2000
+      ports:
+        - "2181:2181"
+      networks:
+        - kafka-network
+  kafka:
+    build:
+      context: ./stream_process/kafka
+    container_name: kafka
+    environment:
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9093
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9093
+    ports:
+      - "9093:9093"
+    depends_on:
+      - zookeeper
+    networks:
+      - kafka-network
+    
+
+  # zookeeper:
+  #   image: zookeeper:3.8
+  #   ports:
+  #     - "2181:2181"
+
+  hbase:
+    build:
+      context: ./stream_process/hbase
+    ports:
+      - "16010:16010"
+      - "2182:2181"
+    depends_on:
+      - zookeeper
+    command: /bin/sh -c "/usr/local/hbase/bin/start-hbase.sh && tail -f /dev/null"
+  
+  hadoop:
+    build:
+      context: ./batch_process/hadoop
+    ports:
+      - "50070:50070"
+      - "8088:8088"
+
+  # spark:
+  #   build:
+  #     context: ./batch_process/spark
+  #   ports:
+  #     - "7077:7077"
+  #     - "8081:8080"
+  #   networks:
+  #     - spark-network
+  #   depends_on:
+  #     - hadoop
+
+  # spark-master:
+  #   image: clv-big-data-project-spark:latest
+  #   container_name: spark-master
+  #   environment:
+  #     - SPARK_MODE=master
+  #     # - SPARK_MASTER_HOST=spark-master
+  #     # - SPARK_LOCAL_IP=spark-master
+  #   ports:
+  #     - "7077:7077"   # Spark master port
+  #     - "8080:8080"   # Spark UI port
+  #   networks:
+  #     - spark-network
+  #   command: ["/usr/local/spark/sbin/start-master.sh", "--host", "0.0.0.0", "--port", "7077", "--webui-port", "8080"]
+  
+  # # Spark Worker service
+  # spark-worker:
+  #   image: clv-big-data-project-spark:latest
+  #   container_name: spark-worker
+  #   ports:
+  #     - "8081:8081"
+  #   environment:
+  #     - SPARK_MODE=worker
+  #     - SPARK_MASTER=spark://spark-master:7077
+  #   depends_on:
+  #     - spark-master
+  #   networks:
+  #     - spark-network
+  #   command: ["/usr/local/spark/sbin/start-worker.sh", "spark://spark-master:7077"]
+  
+
+  spark-master:
+    image: clv-big-data-project-spark:latest
+    container_name: spark-master
+    environment:
+      - SPARK_MODE=master
+      - SPARK_MASTER=spark://spark-master:7077
+    ports:
+      - "7077:7077"   # Spark master port
+      - "8080:8080"   # Spark UI port
+    networks:
+      - spark-network
+    command: ["/usr/local/spark/sbin/start-master.sh", "--host", "0.0.0.0", "--port", "7077", "--webui-port", "8080"]
+
+  spark-worker:
+    image: clv-big-data-project-spark:latest
+    container_name: spark-worker
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER=spark://spark-master:7077
+    depends_on:
+      - spark-master
+    networks:
+      - spark-network
+    ports:
+      - "8081:8081"   # Spark worker UI port
+    command: ["/bin/sh", "-c", "until nc -z spark-master 7077; do echo waiting for spark-master; sleep 2; done; /usr/local/spark/sbin/start-worker.sh spark://spark-master:7077"]
+
+  postgres:
+    build:
+      context: ./batch_process/postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+
+  airflow:
+    build:
+      context: ./batch_process/airflow
+    ports:
+      - "8082:8080"
+    environment:
+      AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    depends_on:
+      - postgres
+
+  python-runner:
+    build:
+      context: ./python_runner
+    volumes:
+      - ./python_runner:/app
+    # network_mode: "host"
+    # networks:
+    #   - default
+
+networks:
+  kafka-network:
+    driver: bridge
+  spark-network:
+    driver: bridge
+  default:
+    driver: bridge

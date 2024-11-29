@@ -30,7 +30,7 @@ def prepare_message(row):
 
 # # Thiết lập Kafka producer
 producer = KafkaProducer(
-    bootstrap_servers='localhost:9092',
+    bootstrap_servers='localhost:9093',
     value_serializer=lambda v: json.dumps(serialize_data(v)).encode('utf-8')
 )
 
