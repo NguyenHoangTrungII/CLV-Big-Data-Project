@@ -27,7 +27,7 @@ RUN pip install --no-binary :all: thriftpy2
 WORKDIR /app
 
 # Sao chép mã nguồn vào thư mục làm việc /app
-COPY . /app
+COPY . /app/
 
 # Sao chép file requirements.txt vào trong container và cài đặt thư viện
 COPY requirements.txt .
@@ -39,4 +39,4 @@ COPY run.sh /app/run.sh
 RUN chmod +x /app/run.sh
 
 # Lệnh mặc định để chạy
-# CMD ["./run.sh"]
+CMD ["sh", "./run.sh"]

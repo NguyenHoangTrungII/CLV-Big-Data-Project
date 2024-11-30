@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 # Kafka configuration
 KAFKA_TOPIC = 'CLV_system_nhtrung'
-KAFKA_BOOTSTRAP_SERVERS = 'localhost:9092'
+KAFKA_BOOTSTRAP_SERVERS = '172.20.40.142:9092'
 
 # Schema for incoming Kafka data
 schema = StructType([

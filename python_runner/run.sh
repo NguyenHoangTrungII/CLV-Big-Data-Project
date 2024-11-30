@@ -1,6 +1,10 @@
+
 #!/bin/bash
-# Cài đặt thư viện Python từ requirements.txt
-# pip install --no-cache-dir -r requirements.txt
+# Thêm thư mục /app vào PYTHONPATH
+export PYTHONPATH="/app:$PYTHONPATH"
 
 # Khởi chạy ứng dụng chính
-python3 stream_process/stream_pipeline.py
+python3 -m stream_process.stream_pipeline
+
+# Khởi chạy ứng dụng chính
+python3 -m stream_process.stream_pipeline

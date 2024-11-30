@@ -1,0 +1,6 @@
+Collecting pyarrow
+  Downloading pyarrow-18.1.0-cp310-cp310-manylinux_2_28_x86_64.whl.metadata (3.3 kB)
+Downloading pyarrow-18.1.0-cp310-cp310-manylinux_2_28_x86_64.whl (40.1 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 40.1/40.1 MB 6.5 MB/s eta 0:00:00
+Installing collected packages: pyarrow
+Successfully installed pyarrow-18.1.0

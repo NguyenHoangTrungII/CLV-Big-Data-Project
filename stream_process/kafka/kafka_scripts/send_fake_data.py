@@ -30,18 +30,10 @@ def prepare_message(row):
 
 # # Thiết lập Kafka producer
 producer = KafkaProducer(
-    bootstrap_servers='localhost:9093',
+    # bootstrap_servers='localhost:9093',
+    bootstrap_servers=['172.20.40.142:9093'],  
     value_serializer=lambda v: json.dumps(serialize_data(v)).encode('utf-8')
 )
-
-# Kafka producer configuration as a dictionary
-# producer_config = {
-#     'bootstrap.servers': 'localhost:9092',  # Kafka server address
-#     'value.serializer': lambda v: json.dumps(serialize_data(v)).encode('utf-8')  # Serialization of data
-# }
-
-# # Initialize the Producer with the configuration dictionary
-# producer = Producer(producer_config)
 
 def send_data():
     # Tải dữ liệu từ file Excel

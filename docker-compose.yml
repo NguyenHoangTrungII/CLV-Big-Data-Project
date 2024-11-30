@@ -10,22 +10,23 @@ services:
         ZOOKEEPER_TICK_TIME: 2000
       ports:
         - "2181:2181"
-      networks:
-        - kafka-network
+      # networks:
+      #   - kafka-network
   kafka:
     build:
       context: ./stream_process/kafka
     container_name: kafka
     environment:
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9093
+      # KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://172.20.40.142:9093
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9093
     ports:
       - "9093:9093"
     depends_on:
       - zookeeper
-    networks:
-      - kafka-network
+    # networks:
+    #   - kafka-network
     
 
   # zookeeper:
@@ -92,28 +93,36 @@ services:
   
 
   spark-master:
-    image: clv-big-data-project-spark:latest
+    # image: clv-big-data-project-spark:latest
+    build:
+     context: ./batch_process/spark
     container_name: spark-master
     environment:
       - SPARK_MODE=master
-      - SPARK_MASTER=spark://spark-master:7077
+      # - SPARK_MASTER=spark://spark-master:7077
+      - SPARK_MASTER=spark://172.20.40.142:7077
+      - SPARK_LOCAL_HOSTNAME=172.20.40.142  # Địa chỉ IP của máy host
     ports:
       - "7077:7077"   # Spark master port
       - "8080:8080"   # Spark UI port
-    networks:
-      - spark-network
+    # networks:
+    #   - spark-network
     command: ["/usr/local/spark/sbin/start-master.sh", "--host", "0.0.0.0", "--port", "7077", "--webui-port", "8080"]
 
   spark-worker:
-    image: clv-big-data-project-spark:latest
+    # image: clv-big-data-project-spark:latest
+    build:
+      context: ./batch_process/spark
     container_name: spark-worker
     environment:
       - SPARK_MODE=worker
-      - SPARK_MASTER=spark://spark-master:7077
+      - SPARK_MASTER=spark://172.20.40.142:7077
+
+      # - SPARK_MASTER=spark://spark-master:7077
     depends_on:
       - spark-master
-    networks:
-      - spark-network
+    # networks:
+    #   - spark-network
     ports:
       - "8081:8081"   # Spark worker UI port
     command: ["/bin/sh", "-c", "until nc -z spark-master 7077; do echo waiting for spark-master; sleep 2; done; /usr/local/spark/sbin/start-worker.sh spark://spark-master:7077"]
@@ -142,11 +151,14 @@ services:
   python-runner:
     build:
       context: ./python_runner
+    image: 5cd2f0903f9e  
+    container_name: python-runner-container-newest-1
     volumes:
-      - ./python_runner:/app
+      - ./:/app
+    tty: true
     # network_mode: "host"
-    # networks:
-    #   - default
+    networks:
+      - default
 
 networks:
   kafka-network:

@@ -1,8 +1,9 @@
-pandas
-kafka-python
-six
-tensorflow
-happybase
-hdfs
-pyspark
-numpy
+pandas==2.1.0
+kafka-python==2.0.2
+six==1.16.0
+happybase==1.2.0
+hdfs==2.7.0
+pyspark==3.5.3
+numpy==1.24.3
+tensorflow==2.13.0
+
