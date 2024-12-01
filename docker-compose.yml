@@ -99,9 +99,9 @@ services:
     container_name: spark-master
     environment:
       - SPARK_MODE=master
-      # - SPARK_MASTER=spark://spark-master:7077
-      - SPARK_MASTER=spark://172.20.40.142:7077
-      - SPARK_LOCAL_HOSTNAME=172.20.40.142  # Địa chỉ IP của máy host
+      - SPARK_MASTER=spark://spark-master:7077
+      # - SPARK_MASTER=spark://172.20.40.142:7077
+      # - SPARK_LOCAL_HOSTNAME=172.20.40.142  # Địa chỉ IP của máy host
     ports:
       - "7077:7077"   # Spark master port
       - "8080:8080"   # Spark UI port
@@ -116,9 +116,9 @@ services:
     container_name: spark-worker
     environment:
       - SPARK_MODE=worker
-      - SPARK_MASTER=spark://172.20.40.142:7077
+      # - SPARK_MASTER=spark://172.20.40.142:7077
 
-      # - SPARK_MASTER=spark://spark-master:7077
+      - SPARK_MASTER=spark://spark-master:7077
     depends_on:
       - spark-master
     # networks:

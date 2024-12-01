@@ -8,13 +8,15 @@ import pandas as pd
 import threading
 from stream_process.hbase.hbase_scripts.hbase_consumer import insert_data_to_hbase, connect_to_hbase
 
+from batch_process.spark.spark_scripts.spark_processing import process_streaming_features
+
 # Initialize logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Kafka configuration
 KAFKA_TOPIC = 'CLV_system_nhtrung'
-KAFKA_BOOTSTRAP_SERVERS = '172.20.40.142:9092'
+KAFKA_BOOTSTRAP_SERVERS = '172.20.40.142:9093'
 
 # Schema for incoming Kafka data
 schema = StructType([
@@ -37,13 +39,6 @@ except Exception as e:
     logger.error(f"Error loading model: {e}")
     exit(1)
 
-# Preprocessing Function (optimized)
-# def preprocess_data(df):
-#     df = df.withColumn("InvoiceDate", regexp_replace(col("InvoiceDate"), "[^0-9\-: ]", ""))
-#     df = df.withColumn("InvoiceDate", to_timestamp(col("InvoiceDate"), "yyyy-MM-dd HH:mm:ss"))
-#     df = df.select("InvoiceNo", "CustomerID", "Quantity", "UnitPrice", "InvoiceDate")  #Only select necessary columns.
-#     return df
-
 def preprocess_data(df):
     #All preprocessing is done in Spark now
     df = df.withColumn("InvoiceDate", regexp_replace(col("InvoiceDate"), "[^0-9\-: ]", ""))
@@ -62,9 +57,13 @@ def preprocess_data(df):
            .withColumn("InvoiceDate", unix_timestamp(col("InvoiceDate")).cast("double"))
 
     #Select only necessary columns for prediction.
-    df = df.select("InvoiceNo", "CustomerID", "Quantity", "UnitPrice", "InvoiceDate", "Revenue", "hour","hour", "hour", "dayofweek", "weekend")
-    pandas_df = df.toPandas()
-    return pandas_df
+    # df = df.select("InvoiceNo", "CustomerID", "Quantity", "UnitPrice", "InvoiceDate", "Revenue", "hour","hour", "hour", "dayofweek", "weekend")
+    # pandas_df = df.toPandas()
+
+    df = df.select("InvoiceNo", "CustomerID", "Quantity", "UnitPrice", "InvoiceDate", "Revenue")
+
+    
+    return df.toPandas()
 
 def register_udf(spark):
     @pandas_udf("double")
@@ -78,67 +77,7 @@ def register_udf(spark):
             print(f"Error in predict {e}")
 
         return predictions
-        # try:
-        #     global model
-
-        #     predictions = model.predict(input_data_values)
-
-            # input_data = pd.DataFrame({
-            #     'InvoiceNo': invoice_no,
-            #     'Quantity': quantity,
-            #     'UnitPrice': unit_price,
-            #     'InvoiceDate': invoice_date,
-            #     'CustomerID': customer_id
-            # })
-            
-            
-            # Convert InvoiceDate to datetime with nanosecond precision
-        #     input_data['InvoiceDate'] = pd.to_datetime(input_data['InvoiceDate'], errors='coerce', format='%Y-%m-%d %H:%M:%S')
-
-        #     # Ensure the 'InvoiceDate' column is in datetime64[ns] format
-        #     input_data['InvoiceDate'] = input_data['InvoiceDate'].astype('datetime64[ns]')
-
-        #     # Handle missing values or invalid data
-        #     input_data = input_data.dropna(subset=['InvoiceDate', 'Quantity', 'UnitPrice'])
-            
-
-
-        #     input_data['Quantity'] = input_data['Quantity'].astype(np.float32)
-        #     input_data['UnitPrice'] = input_data['UnitPrice'].astype(np.float32)
-        #     input_data['Revenue'] = input_data['Quantity'] * input_data['UnitPrice']
-        #     input_data['hour'] = input_data['InvoiceDate'].dt.hour
-            
-        #     input_data['hour1'] = input_data['InvoiceDate'].dt.hour
-        #     input_data['hour2'] = input_data['InvoiceDate'].dt.hour
-        #     input_data['hour3'] = input_data['InvoiceDate'].dt.hour
-        #     input_data['hour4'] = input_data['InvoiceDate'].dt.hour
-
-
-        #     input_data['dayofweek'] = input_data['InvoiceDate'].dt.dayofweek
-        #     input_data['weekend'] = input_data['dayofweek'].apply(lambda x: 1 if x >= 5 else 0)
-        #     input_data = input_data.replace([np.inf, -np.inf], np.nan).dropna()
-        #     # input_data_values = np.array(input_data[['Quantity', 'UnitPrice', 'hour', 'dayofweek', 'weekend', 'Revenue']].values, dtype=np.float32)
-
-        #     input_data_values = np.array(input_data.values, dtype=np.float32)
-        #     #Check that the shape is correct
-        #     logger.info(f"Shape of input data for prediction: {input_data_values.shape}")
-        #     if input_data_values.shape[0] == 0:
-        #         logger.warning("Empty input data for prediction. Returning default value.")
-        #         return pd.Series([0.0] * len(invoice_no))
-
-        #     predictions = model.predict(input_data_values)
-        #     return pd.Series(predictions.flatten())
-        # except Exception as e:
-        #     logger.exception(f"Error during model prediction: {e}")
-        #     #Return a default value if prediction fails.
-        #     return pd.Series([0.0] * len(invoice_no))
-
-
-        
-
-        # print("Data predict", pd.Series(predictions.flatten()))
-        
-        return pd.Series(predictions.flatten())
+        # return pd.Series(predictions.flatten())
     return predict_udf
 
 def connect_and_save_to_hbase(df_with_predictions):
@@ -154,50 +93,30 @@ def connect_and_save_to_hbase(df_with_predictions):
 
     print("Sucess insert into hbase") 
 
-# def process_batch(batch_df, batch_id, predict_udf):
-#     logger.info(f"Processing batch {batch_id}")
-#     processed_df = preprocess_data(batch_df)
-#     try:
-#         results_df = processed_df.withColumn(
-#         "CLV_Prediction",
-#         predict_udf(processed_df["InvoiceNo"], processed_df["Quantity"], processed_df["UnitPrice"], processed_df["InvoiceDate"], processed_df["CustomerID"])
-#         )
-#     except Exception as e:
-#         logger.exception(f"Error in process_batch {e}")
-
-#     results_df.show()  # Hoặc ghi vào hệ thống tệp nếu cần
-
-#     connect_and_save_to_hbase(results_df.toPandas())
-#     # results_df.show(10, truncate=False)
-
-#     # print("Data in process batch: ", results_df.show(10, truncate=False) )
-
-
 def process_batch(batch_df, batch_id, predict_udf):
     if batch_df.isEmpty():
         print(f"Batch {batch_id} is empty!")
         return
 
     # Xử lý batch
-    processed_df = preprocess_data(batch_df)
+    processed_df_before = preprocess_data(batch_df)
 
-    # # Hành động Spark - ghi hoặc hiển thị
-    # print(f"Processed Batch {batch_id}:")
-    # processed_df.show(truncate=False)
-
-    # # Nếu bạn muốn lưu dữ liệu, hãy sử dụng `.write`
-    # processed_df.write.mode("append").format("console").save()
-   
+    processed_df = process_streaming_features(batch_df)
 
    # Thực hiện dự đoán với mô hình ML
     try:
         features = processed_df
+
+        print("Features (Pandas DataFrame) Info:")
+        print(features.info())  # In thông tin chi tiết
+        print("Features Head:")
+        print(features.head())  # In một vài dòng đầu tiên        
         predictions = model.predict(features)
-        processed_df["CLV_Prediction"] = predictions
+        processed_df_before["CLV_Prediction"] = predictions
 
         # Log kết quả
         print("Predicted Batch Data:")
-        print(processed_df)
+        print(processed_df_before)
     except Exception as e:
         logger.error(f"Error during model prediction: {e}")
         

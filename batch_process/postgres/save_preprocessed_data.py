@@ -1,7 +1,7 @@
 import pandas as pd
-from sqlalchemy import create_engine
-from pyspark.sql.functions import col, regexp_replace, to_timestamp, hour, dayofweek, when
-from pyspark.sql.types import IntegerType, FloatType
+# from sqlalchemy import create_engine
+# from pyspark.sql.functions import col, regexp_replace, to_timestamp, hour, dayofweek, when
+# from pyspark.sql.types import IntegerType, FloatType
 
 from batch_process.postgres.postgres_config.config import jdbc_url, properties
 
