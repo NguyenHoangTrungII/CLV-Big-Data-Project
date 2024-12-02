@@ -8,7 +8,7 @@ import pandas as pd
 import threading
 from stream_process.hbase.hbase_scripts.hbase_consumer import insert_data_to_hbase, connect_to_hbase
 
-from batch_process.spark.spark_scripts.spark_processing import process_streaming_features
+from batch_process.spark.spark_scripts.spark_processing import process_streaming_features,clean_and_transform_data
 
 # Initialize logging
 logging.basicConfig(level=logging.INFO)
@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 # Kafka configuration
 KAFKA_TOPIC = 'CLV_system_nhtrung'
-KAFKA_BOOTSTRAP_SERVERS = '172.20.40.142:9093'
+KAFKA_BOOTSTRAP_SERVERS = '172.29.177.196:9093'
 
 # Schema for incoming Kafka data
 schema = StructType([
@@ -99,24 +99,28 @@ def process_batch(batch_df, batch_id, predict_udf):
         return
 
     # Xử lý batch
-    processed_df_before = preprocess_data(batch_df)
+    try:
+        processed_df_before = clean_and_transform_data(batch_df)
 
-    processed_df = process_streaming_features(batch_df)
+        processed_df = process_streaming_features(processed_df_before)
+    except Exception as e:
+        logger.error(f"Error during pre-data for prediction: {e}")
 
    # Thực hiện dự đoán với mô hình ML
     try:
-        features = processed_df
+        features = processed_df.toPandas()
+        data_to_save = processed_df_before.toPandas()
 
         print("Features (Pandas DataFrame) Info:")
         print(features.info())  # In thông tin chi tiết
         print("Features Head:")
         print(features.head())  # In một vài dòng đầu tiên        
         predictions = model.predict(features)
-        processed_df_before["CLV_Prediction"] = predictions
+        data_to_save["CLV_Prediction"] = predictions
 
         # Log kết quả
         print("Predicted Batch Data:")
-        print(processed_df_before)
+        print(predictions)
     except Exception as e:
         logger.error(f"Error during model prediction: {e}")
         
