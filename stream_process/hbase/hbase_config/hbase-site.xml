@@ -26,6 +26,22 @@
         <value>60</value>
     </property>
 
+    <property>
+        <name>hbase.client.operation.timeout</name>
+        <value>60000</value> <!-- Tăng thời gian timeout lên 60 giây -->
+    </property>
+
+    <property>
+        <name>hbase.client.scanner.timeout.period</name>
+        <value>60000</value> <!-- Tăng thời gian timeout cho scan -->
+    </property>
+
+    <property>
+        <name>hbase.thrift.enabled</name>
+        <value>true</value>
+        <description>Enable Thrift server</description>
+    </property>
+
     <!-- Cấu hình thêm (nếu cần) -->
     <!-- Các tham số khác để tùy chỉnh hệ thống HBase -->
 </configuration>

@@ -32,4 +32,4 @@ EXPOSE 2181 16010 16000 9090
 
 # Chạy Zookeeper và HBase
 # CMD /usr/local/hbase/bin/start-hbase.sh
-CMD ["/usr/local/hbase/bin/start-hbase.sh", "start"]
+# CMD ["/usr/local/hbase/start-hbase-all.sh", "start"]

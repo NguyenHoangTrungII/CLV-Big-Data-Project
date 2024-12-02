@@ -93,11 +93,12 @@ def connect_and_save_to_hbase(df_with_predictions):
 
     print("Sucess insert into hbase") 
 
-def process_batch(batch_df, batch_id, predict_udf):
+def process_batch(batch_df, batch_id, predict_udf, connection):
     if batch_df.isEmpty():
         print(f"Batch {batch_id} is empty!")
         return
 
+    
     # Xử lý batch
     try:
         processed_df_before = clean_and_transform_data(batch_df)
@@ -123,7 +124,11 @@ def process_batch(batch_df, batch_id, predict_udf):
         print(df_with_predictions['InvoiceDate'])
 
         #connect and save data to hbase
-        connect_and_save_to_hbase(df_with_predictions)
+        # connect_and_save_to_hbase(df_with_predictions)
+
+        insert_data_to_hbase(connection, df_with_predictions)
+
+        print("Sucess insert into hbase") 
 
     except Exception as e:
         logger.error(f"Error during model prediction: {e}")
@@ -139,10 +144,16 @@ def consume_and_preprocess(spark, predict_udf_func):
         parsed_df = kafka_df.withColumn("data", from_json(col("value"), schema)).select("data.*")
         # parsed_df = parsed_df.dropna()
 
+        # Connect to HBase
+        try:
+            connection = connect_to_hbase()
+        except Exception as e:
+            print("Fail to connect", e)
+        
          
         query = parsed_df \
             .writeStream \
-            .foreachBatch(lambda batch_df, batch_id: process_batch(batch_df, batch_id, predict_udf_func)) \
+            .foreachBatch(lambda batch_df, batch_id: process_batch(batch_df, batch_id, predict_udf_func, connection)) \
             .start()
         
 
