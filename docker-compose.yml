@@ -40,6 +40,7 @@ services:
     ports:
       - "16010:16010"
       - "2182:2181"
+      - "9090:9090"
     depends_on:
       - zookeeper
     command: /bin/sh -c "/usr/local/hbase/bin/start-hbase.sh && tail -f /dev/null"
@@ -50,47 +51,6 @@ services:
     ports:
       - "50070:50070"
       - "8088:8088"
-
-  # spark:
-  #   build:
-  #     context: ./batch_process/spark
-  #   ports:
-  #     - "7077:7077"
-  #     - "8081:8080"
-  #   networks:
-  #     - spark-network
-  #   depends_on:
-  #     - hadoop
-
-  # spark-master:
-  #   image: clv-big-data-project-spark:latest
-  #   container_name: spark-master
-  #   environment:
-  #     - SPARK_MODE=master
-  #     # - SPARK_MASTER_HOST=spark-master
-  #     # - SPARK_LOCAL_IP=spark-master
-  #   ports:
-  #     - "7077:7077"   # Spark master port
-  #     - "8080:8080"   # Spark UI port
-  #   networks:
-  #     - spark-network
-  #   command: ["/usr/local/spark/sbin/start-master.sh", "--host", "0.0.0.0", "--port", "7077", "--webui-port", "8080"]
-  
-  # # Spark Worker service
-  # spark-worker:
-  #   image: clv-big-data-project-spark:latest
-  #   container_name: spark-worker
-  #   ports:
-  #     - "8081:8081"
-  #   environment:
-  #     - SPARK_MODE=worker
-  #     - SPARK_MASTER=spark://spark-master:7077
-  #   depends_on:
-  #     - spark-master
-  #   networks:
-  #     - spark-network
-  #   command: ["/usr/local/spark/sbin/start-worker.sh", "spark://spark-master:7077"]
-  
 
   spark-master:
     # image: clv-big-data-project-spark:latest

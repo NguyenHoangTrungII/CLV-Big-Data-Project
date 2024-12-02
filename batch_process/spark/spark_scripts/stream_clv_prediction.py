@@ -109,18 +109,22 @@ def process_batch(batch_df, batch_id, predict_udf):
    # Thực hiện dự đoán với mô hình ML
     try:
         features = processed_df.toPandas()
-        data_to_save = processed_df_before.toPandas()
+        df_with_predictions = processed_df_before.toPandas()
 
         print("Features (Pandas DataFrame) Info:")
         print(features.info())  # In thông tin chi tiết
         print("Features Head:")
         print(features.head())  # In một vài dòng đầu tiên        
         predictions = model.predict(features)
-        data_to_save["CLV_Prediction"] = predictions
+        df_with_predictions["CLV_Prediction"] = predictions[0][0] 
 
         # Log kết quả
         print("Predicted Batch Data:")
-        print(predictions)
+        print(df_with_predictions['InvoiceDate'])
+
+        #connect and save data to hbase
+        connect_and_save_to_hbase(df_with_predictions)
+
     except Exception as e:
         logger.error(f"Error during model prediction: {e}")
         
