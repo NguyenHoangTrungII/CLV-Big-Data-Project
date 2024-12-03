@@ -1,0 +1,34 @@
+<div class="container">
+    <h2>Dữ Liệu CLV</h2>
+  
+    <!-- Hiển thị nếu đang tải dữ liệu -->
+    <div *ngIf="isLoading">Đang tải dữ liệu...</div>
+  
+    <!-- <div>{{data.length}}</div> -->
+    <!-- Hiển thị bảng dữ liệu nếu đã tải xong -->
+    <table *ngIf="!isLoading && data.length > 0" class="table table-striped">
+      <thead>
+        <tr>
+          <th>Row Key</th>
+          <th>Invoice Date</th>
+          <th>Quantity</th>
+          <th>Revenue</th>
+          <th>CLV Prediction</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let item of data">
+          <td>{{ item.row_key }}</td>
+          <td>{{ item.data['cf:InvoiceDate'] }}</td>
+          <td>{{ item.data['cf:Quantity'] }}</td>
+          <td>{{ item.data['cf:Revenue'] }}</td>
+          <td>{{ item.data['cf:CLV_Prediction'] || 'N/A' }}</td>
+        </tr>
+      </tbody>
+    </table>
+    <!-- Hiển thị thông báo nếu không có dữ liệu -->
+    <div *ngIf="!isLoading && data.length === 0">
+      <p>Không có dữ liệu.</p>
+    </div>
+</div>
+  

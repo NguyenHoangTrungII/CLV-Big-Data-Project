@@ -2,8 +2,11 @@ from flask import Flask, jsonify
 import happybase
 import threading
 import time
+from flask_cors import CORS  
 
 app = Flask(__name__)
+
+CORS(app)  
 
 # Kết nối tới HBase
 connection = happybase.Connection('localhost') 
