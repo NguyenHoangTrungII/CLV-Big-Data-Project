@@ -27,8 +27,8 @@ RUN ssh-keygen -t rsa -P '' -f /root/.ssh/id_rsa && \
     chmod 700 /root/.ssh && chmod 600 /root/.ssh/authorized_keys
 
 # Sao chép các tệp cấu hình Hadoop
-COPY ./hadoop_config/hdfs-site.xml.template /usr/local/hadoop/etc/hadoop/hdfs-site.xml.template
-COPY ./hadoop_config/core-site.xml.template /usr/local/hadoop/etc/hadoop/core-site.xml.template
+COPY ./batch_process/hadoop/hadoop_config/hdfs-site.xml.template /usr/local/hadoop/etc/hadoop/hdfs-site.xml.template
+COPY ./batch_process/hadoop/hadoop_config/core-site.xml.template /usr/local/hadoop/etc/hadoop/core-site.xml.template
 
 # Đặt các biến môi trường
 ENV JAVA_HOME=/usr/local/openjdk-8
@@ -37,9 +37,8 @@ ENV PATH=$HADOOP_HOME/bin:$HADOOP_HOME/sbin:$PATH
 ENV DFS_REPLICATION=3
 ENV NAMENODE_DIR="file:///usr/local/hadoop/data/name"
 ENV DATANODE_DIR="file:///usr/local/hadoop/data/datanode"
-ENV HADOOP_NAMENODE_HOST="localhost"
+ENV HADOOP_NAMENODE_HOST="namenode"
 ENV HADOOP_NAMENODE_PORT="9000"
-ENV JAVA_HOME=/usr/local/openjdk-8
 ENV PATH=$JAVA_HOME/bin:$PATH
 
 
@@ -57,11 +56,14 @@ RUN mkdir -p /usr/local/hadoop/logs && \
 # Format NameNode (nếu chưa format trước đó)
 RUN $HADOOP_HOME/bin/hdfs namenode -format
 
+#Sao chép file HBase Coprocessor jar vào container
+COPY ./stream_process/hbase/hbase_config/hbase-coprocessor-example.jar /tmp/hbase-coprocessor-example.jar
+
+COPY ./batch_process/hadoop/hadoop_config/init-hbase.sh /init-hbase.sh
+RUN chmod +x /init-hbase.sh
+
+# Thêm cấu hình HADOOP_NAMENODE_OPTS vào hadoop-env.sh
+RUN echo "export HADOOP_NAMENODE_OPTS=\"-Djava.net.preferIPv4Stack=true -Dfs.defaultFS=hdfs://namenode:9000\"" >> /usr/local/hadoop/etc/hadoop/hadoop-env.sh
+
 # Mở các cổng cần thiết
 EXPOSE 22 50070 8088 9000
-
-# Lệnh khởi động container
-CMD service ssh start && \
-    $HADOOP_HOME/sbin/start-dfs.sh && \
-    $HADOOP_HOME/sbin/start-yarn.sh && \
-    tail -f /dev/null

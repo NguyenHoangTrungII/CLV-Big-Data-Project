@@ -3,15 +3,97 @@ version: '3.8'
 services:
 
   zookeeper:
-      image: confluentinc/cp-zookeeper
-      container_name: zookeeper
-      environment:
-        ZOOKEEPER_CLIENT_PORT: 2181
-        ZOOKEEPER_TICK_TIME: 2000
-      ports:
-        - "2181:2181"
-      # networks:
-      #   - kafka-network
+    image: confluentinc/cp-zookeeper
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+
+  # zookeeper1:
+  #   image: confluentinc/cp-zookeeper
+  #   container_name: zookeeper1
+  #   environment:
+  #     ZOOKEEPER_CLIENT_PORT: 2181
+  #     # ZOOKEEPER_SERVER_ID: 1
+  #     ZOOKEEPER_TICK_TIME: 2000
+  #     # ZOOKEEPER_SERVERS: "zookeeper1:2888:3888,zookeeper2:2888:3888" 
+  #   ports:
+  #     - "2182:2181"
+
+  # zookeeper2:
+  #   image: confluentinc/cp-zookeeper
+  #   container_name: zookeeper2
+  #   environment:
+  #     ZOOKEEPER_CLIENT_PORT: 2181
+  #     ZOOKEEPER_TICK_TIME: 2000
+  #     ZOOKEEPER_SERVER_ID: 2
+  #     # ZOOKEEPER_SERVERS: "zookeeper1:2888:3888,zookeeper2:2888:3888" 
+  #   ports:
+  #     - "2183:2181"  # Khác cổng để tránh xung đột
+
+  zookeeper1:
+    image: confluentinc/cp-zookeeper:latest
+    container_name: zookeeper1
+    ports:
+      - "2182:2181"  # ZooKeeper client port
+    environment:
+      ZOO_MY_ID: 1
+      ZOO_SERVERS: server.1=zookeeper1:2888:3888 server.2=zookeeper2:2888:3888
+      ZOOKEEPER_CLIENT_PORT: 2181
+    # volumes:
+    #   - ./zookeeper-data1:/zookeeper-data
+    # networks:
+    #   - hbase-network
+
+  zookeeper2:
+    image: confluentinc/cp-zookeeper:latest
+    container_name: zookeeper2
+    ports:
+      - "2183:2181"  # ZooKeeper client port for zookeeper2
+    environment:
+      ZOO_MY_ID: 2
+      ZOO_SERVERS: server.1=zookeeper1:2888:3888 server.2=zookeeper2:2888:3888
+      ZOOKEEPER_CLIENT_PORT: 2181
+    # volumes:
+    #   - ./zookeeper-data2:/zookeeper-data
+    # networks:
+    #   - hbase-network
+  
+  hbase-master:
+    build:
+      context: ./stream_process/hbase
+    container_name: hbase-master
+    ports:
+      - "16010:16010"  # UI port for HBase Master
+      - "16000:16000"  # Master port for HBase communication
+    environment:
+      - HBASE_MASTER=hbase-master:16000
+      - HBASE_REGIONSERVER=hbase-regionserver:16020
+      - HBASE_ZOOKEEPER_QUORUM=zookeeper1,zookeeper2
+    depends_on:
+      - zookeeper1
+      - zookeeper2
+    command: /bin/sh -c "/usr/local/hbase/bin/start-hbase.sh master && tail -f /dev/null"
+    # networks:
+    #   - hbase-network
+
+  hbase-regionserver:
+    build:
+      context: ./stream_process/hbase
+    container_name: hbase-regionserver
+    ports:
+      - "16020:16020"  # RegionServer port
+    environment:
+      - HBASE_MASTER=hbase-master:16000
+      - HBASE_ZOOKEEPER_QUORUM=zookeeper1,zookeeper2
+    depends_on:
+      - hbase-master
+    command: /bin/sh -c "/usr/local/hbase/bin/start-hbase.sh regionserver && tail -f /dev/null"
+    # networks:
+    #   - hbase-network
+
   kafka:
     build:
       context: ./stream_process/kafka
@@ -34,23 +116,99 @@ services:
   #   ports:
   #     - "2181:2181"
 
-  hbase:
-    build:
-      context: ./stream_process/hbase
-    ports:
-      - "16010:16010"
-      - "2182:2181"
-      - "9090:9090"
-    depends_on:
-      - zookeeper
-    command: /bin/sh -c "/usr/local/hbase/bin/start-hbase.sh && tail -f /dev/null"
+  # hbase:
+  #   build:
+  #     context: ./stream_process/hbase
+  #   container_name: hbase
+  #   # ports:
+  #   #   - "16010:16010"
+  #   #   - "2182:2181"
+  #   #   - "9090:9090"
+  #   # depends_on:
+  #   #   - zookeeper
+  #   ports:
+  #     - "16010:16010"   # UI port for HBase Master
+  #     - "16000:16000"   # Master port for HBase communication
+  #     - "16020:16020"   # RegionServer port
+  #     - "2182:2181"     # Zookeeper port (if applicable)
+  #     - "9090:9090"     # Custom port for monitoring or others
+  #   depends_on:
+  #     - zookeeper
+  #   environment:
+  #     - HBASE_MASTER=hbase:16000
+  #     - HBASE_REGIONSERVER=hbase:16020
+  #   command: /bin/sh -c "/usr/local/hbase/bin/start-hbase.sh && tail -f /dev/null"
   
-  hadoop:
+  # hbase-master:
+  #   build:
+  #     context: ./stream_process/hbase
+  #   container_name: hbase-master
+  #   ports:
+  #     - "16010:16010"    # UI port for HBase Master
+  #     - "16000:16000"    # Master port for HBase communication
+  #   environment:
+  #     - HBASE_MASTER=hbase-master:16000
+  #     - HBASE_REGIONSERVER=hbase-regionserver:16020
+  #     - HBASE_ZOOKEEPER_QUORUM=zookeeper1,zookeeper2
+  #   depends_on:
+  #     - zookeeper1
+  #     - zookeeper2
+  #   command: /bin/sh -c "/usr/local/hbase/bin/start-hbase.sh master && tail -f /dev/null"
+  
+  # hbase-regionserver:
+  #   build:
+  #     context: ./stream_process/hbase
+  #   container_name: hbase-regionserver
+  #   ports:
+  #     - "16020:16020"    # RegionServer port
+  #   environment:
+  #     - HBASE_MASTER=hbase-master:16000
+  #     - HBASE_ZOOKEEPER_QUORUM=zookeeper1,zookeeper2
+  #   depends_on:
+  #     - hbase-master
+  #   command: /bin/sh -c "/usr/local/hbase/bin/start-hbase.sh regionserver && tail -f /dev/null"
+  
+  # hadoop:
+  #   build:
+  #     # context: ./batch_process/hadoop
+  #     context: ./ # Đảm bảo rằng context trỏ đến thư mục gốc của dự án
+  #     dockerfile: batch_process/hadoop/Dockerfile
+  #   container_name: hadoop
+  #   ports:
+  #     - "50070:50070"
+  #     - "8088:8088"
+
+  namenode:
     build:
-      context: ./batch_process/hadoop
+      context: ./
+      dockerfile: batch_process/hadoop/Dockerfile
+    container_name: namenode
     ports:
-      - "50070:50070"
-      - "8088:8088"
+      - "50070:50070"   # Web UI của NameNode
+      - "9000:9000"     # Hadoop HDFS
+    environment:
+      - HADOOP_HOME=/usr/local/hadoop
+      - HADOOP_NAMENODE_HOST=namenode
+      - HADOOP_NAMENODE_PORT=9000
+    volumes:
+      - hadoop_namenode_data:/usr/local/hadoop/data/name
+    command: ["bash", "-c", "service ssh start && /usr/local/hadoop/sbin/start-dfs.sh && /usr/local/hadoop/sbin/start-yarn.sh && tail -f /dev/null"]
+
+  datanode:
+    build:
+      context: ./
+      dockerfile: batch_process/hadoop/Dockerfile
+    container_name: datanode
+    depends_on:
+      - namenode
+    environment:
+      - HADOOP_HOME=/usr/local/hadoop
+      - HADOOP_NAMENODE_HOST=namenode
+      - HADOOP_NAMENODE_PORT=9000
+    volumes:
+      - hadoop_datanode_data:/usr/local/hadoop/data/datanode
+    command: ["bash", "-c", "service ssh start && /usr/local/hadoop/sbin/hadoop-daemon.sh start datanode && tail -f /dev/null"]
+
 
   spark-master:
     # image: clv-big-data-project-spark:latest
@@ -90,6 +248,7 @@ services:
   postgres:
     build:
       context: ./batch_process/postgres
+    container_name: postgres
     ports:
       - "5432:5432"
     environment:
@@ -100,6 +259,7 @@ services:
   airflow:
     build:
       context: ./batch_process/airflow
+    container_name: airflow
     ports:
       - "8082:8080"
     environment:
@@ -108,22 +268,27 @@ services:
     depends_on:
       - postgres
 
-  python-runner:
-    build:
-      context: ./python_runner
-    image: 5cd2f0903f9e  
-    container_name: python-runner-container-newest-1
-    volumes:
-      - ./:/app
-    tty: true
-    # network_mode: "host"
-    networks:
-      - default
+  # python-runner:
+  #   build:
+  #     context: ./python_runner
+  #   image: 5cd2f0903f9e  
+  #   container_name: python-runner-container-newest-1
+  #   volumes:
+  #     - ./:/app
+  #   tty: true
+  #   # network_mode: "host"
+  #   networks:
+  #     - default
 
 networks:
   kafka-network:
     driver: bridge
   spark-network:
     driver: bridge
+  hbase-network:
+    driver: bridge
   default:
     driver: bridge
+volumes:
+  hadoop_namenode_data:
+  hadoop_datanode_data:
