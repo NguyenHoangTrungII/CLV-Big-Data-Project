@@ -16,7 +16,7 @@
 
   <property>
     <name>hbase.zookeeper.quorum</name>
-    <value>zookeeper1,zookeeper2</value>
+    <value>zookeeper1,zookeeper2,zookeeper3</value>
   </property>
   
   <property>
@@ -43,6 +43,28 @@
   <property>
     <name>hbase.hregion.dir</name>
     <value>hdfs://namenode:9000/hbase/regions</value>
+  </property>
+
+  <property>
+    <name>zookeeper.znode.parent</name>
+    <value>/hbase</value>  <!-- Đảm bảo giá trị này là '/hbase' -->
+  </property>
+
+  <!-- Kích hoạt Load Balancer -->
+  <property>
+    <name>hbase.master.loadbalancer</name>
+    <value>org.apache.hadoop.hbase.master.balancer.StochasticLoadBalancer</value>
+  </property>
+
+  <property>
+    <name>hbase.master.loadbalancer.stochastic.balance.threshold</name>
+    <value>0.5</value> <!-- Giá trị này xác định mức độ cân bằng tải cho vùng -->
+  </property>
+
+  <!-- Bật tính năng cân bằng tải tự động -->
+  <property>
+    <name>hbase.master.balancer.period</name>
+    <value>60000</value> <!-- Cập nhật mỗi 60 giây -->
   </property>
 
 </configuration>
