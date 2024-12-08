@@ -10,7 +10,15 @@ services:
       ZOOKEEPER_TICK_TIME: 2000
     ports:
       - "2181:2181"
-
+  
+  # zoo:
+  #     image: zookeeper:3.4.10
+  #     container_name: zoo
+  #     # environment:
+  #       # ZOO_MY_ID: 1
+  #       # ZOO_SERVERS: server.1=0.0.0.0:2888:3888
+  #     ports:
+  #       - 2186:2181
   # zookeeper1:
   #   image: confluentinc/cp-zookeeper
   #   container_name: zookeeper1
@@ -40,9 +48,11 @@ services:
       - "2182:2181"  
     environment:
       ZOO_MY_ID: 1
-      ZOO_SERVERS: server.1=zookeeper1:2888:3888 server.2=zookeeper2:2888:3888 server.3=zookeeper3:2888:3888
+      ZOO_SERVERS: "server.1=zookeeper1:2888:3888;server.2=zookeeper2:2888:3888;server.3=zookeeper3:2888:3888"
       ZOOKEEPER_CLIENT_PORT: 2181
-    
+    volumes:
+      - /tmp/zookeeper1/data
+      - /tmp/zookeeper1/datalog
 
   zookeeper2:
     image: confluentinc/cp-zookeeper:latest
@@ -51,9 +61,11 @@ services:
       - "2183:2181"  
     environment:
       ZOO_MY_ID: 2
-      ZOO_SERVERS: server.1=zookeeper1:2888:3888 server.2=zookeeper2:2888:3888 server.3=zookeeper3:2888:3888
+      ZOO_SERVERS: "server.1=zookeeper1:2888:3888;server.2=zookeeper2:2888:3888;server.3=zookeeper3:2888:3888"
       ZOOKEEPER_CLIENT_PORT: 2181
-    
+    volumes:
+      - /tmp/zookeeper2/data
+      - /tmp/zookeeper2/datalog
 
   zookeeper3:
     image: confluentinc/cp-zookeeper:latest
@@ -62,44 +74,92 @@ services:
       - "2184:2181"  
     environment:
       ZOO_MY_ID: 3
-      ZOO_SERVERS: server.1=zookeeper1:2888:3888 server.2=zookeeper2:2888:3888 server.3=zookeeper3:2888:3888
+      ZOO_SERVERS: "server.1=zookeeper1:2888:3888;server.2=zookeeper2:2888:3888;server.3=zookeeper3:2888:3888"
       ZOOKEEPER_CLIENT_PORT: 2181
-    
+    volumes:
+      - /tmp/zookeeper3/data
+      - /tmp/zookeeper3/datalog
       
 
   hbase-master:
     build:
-      context: ./stream_process/hbase
+      context: ./
+      # dockerfile: stream_process/hbase_distribute/hbase_master/Dockerfile
+      dockerfile: stream_process/hbase/Dockerfile
     container_name: hbase-master
     
     ports:
       - "16010:16010"  # UI port for HBase Master
       - "16000:16000"  # Master port for HBase communication
     environment:
+      - HBASE_MANAGES_ZK=false
       - HBASE_MASTER=hbase-master:16000
       - HBASE_REGIONSERVER=hbase-regionserver:16020
+      - HBASE_MASTER_OPTS=-Dhbase.master.info.port=16010
       - HBASE_ZOOKEEPER_QUORUM=zookeeper1,zookeeper2,zookeeper3
     depends_on:
+      - namenode
+      # - zoo
       - zookeeper1
       - zookeeper2
       - zookeeper3
-    command: /bin/sh -c "/usr/local/hbase/bin/start-hbase.sh master && tail -f /dev/null"
+    env_file:
+      - ./stream_process/hbase_distribute/hbase-distributed-local.env
+    # healthcheck:
+    #   test: ["CMD", "curl", "-f", "http://localhost:16010"]
+    #   interval: 30s
+    #   timeout: 10s
+    #   retries: 5
+    command: /bin/sh -c "/usr/local/hbase/bin/hbase master start && tail -f /dev/null"
     
 
   hbase-regionserver:
     build:
-      context: ./stream_process/hbase
+      context: ./
+      # dockerfile: stream_process/hbase_distribute/hbase_regionserver/Dockerfile
+      dockerfile: stream_process/hbase/Dockerfile
     container_name: hbase-regionserver
     
     ports:
       - "16020:16020"  # RegionServer port
+      - "16030:16030"
     environment:
+      - HBASE_MANAGES_ZK=false
       - HBASE_MASTER=hbase-master:16000
+      - HBASE_REGIONSERVER_OPTS=-Dhbase.regionserver.info.port=16030
       - HBASE_ZOOKEEPER_QUORUM=zookeeper1,zookeeper2, zookeeper3
     depends_on:
       - hbase-master
-    command: /bin/sh -c "/usr/local/hbase/bin/start-hbase.sh regionserver && tail -f /dev/null"
+    env_file:
+      - ./stream_process/hbase_distribute/hbase-distributed-local.env
+    # healthcheck:
+    #   test: ["CMD", "curl", "-f", "http://localhost:16030"]
+    #   interval: 30s
+    #   timeout: 10s
+    #   retries: 5
+    command: /bin/sh -c "/usr/local/hbase/bin/hbase regionserver start && tail -f /dev/null"
     
+  # hbase:
+  #   # image: bde2020/hbase-standalone:1.0.0-hbase1.2.6
+  #   build:
+  #     context: ./stream_process/hbase
+  #   container_name: hbase
+  #   volumes:
+  #     - hbase_data:/hbase-data
+  #     - hbase_zookeeper_data:/zookeeper-data
+  #   ports:
+  #     - 16000:16000
+  #     - 16010:16010
+  #     - 16020:16020
+  #     - 16030:16030
+  #     - 2888:2888
+  #     - 3888:3888
+  #     - 2188:2181
+  #   environment:
+  #     SERVICE_PRECONDITION: "namenode:50070 datanode:50075"
+  #   env_file:
+  #     - ./stream_process/hbase/hbase-standalone.env
+  #   command: /bin/sh -c "/usr/local/hbase/bin/start-hbase.sh && tail -f /dev/null"
 
   kafka:
     build:
@@ -117,12 +177,6 @@ services:
     # networks:
     #   - kafka-network
     
-
-  # zookeeper:
-  #   image: zookeeper:3.8
-  #   ports:
-  #     - "2181:2181"
-
   # hbase:
   #   build:
   #     context: ./stream_process/hbase
@@ -295,3 +349,5 @@ networks:
 volumes:
   hadoop_namenode_data:
   hadoop_datanode_data:
+  hbase_data:
+  hbase_zookeeper_data:

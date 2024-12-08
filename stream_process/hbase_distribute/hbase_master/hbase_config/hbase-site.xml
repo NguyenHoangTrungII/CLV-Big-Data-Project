@@ -1,0 +1,79 @@
+<configuration>
+  <property>
+    <name>hbase.cluster.distributed</name>
+    <value>true</value>
+  </property>
+
+  <property>
+    <name>hbase.master</name>
+    <value>172.20.0.11:16000</value>
+  </property>
+
+  <property>
+    <name>hbase.master.info.port</name>
+    <value>16010</value>
+ </property>
+
+  <property>
+    <name>hbase.zookeeper.quorum</name>
+    <value>172.20.0.3,172.20.0.7,172.20.0.9</value>
+  </property>
+
+  <property>
+    <name>hbase.zookeeper.property.clientPort</name>
+    <value>2181</value>
+  </property>
+
+  <property>
+    <name>hbase.rootdir</name>
+    <value>hdfs://namenode:9000/hbase</value>
+  </property>
+
+  <property>
+    <name>zookeeper.znode.parent</name>
+    <value>/hbase</value>
+  </property>
+
+  <property>
+    <name>hbase.master.namespace.init.timeout</name>
+    <value>5400000</value>
+  </property>
+
+  <property>
+    <name>hbase.master.catalogjanitor.enabled</name>
+    <value>true</value>
+</property>
+
+<property>
+    <name>hbase.regionserver.port</name>
+    <value>16020</value>
+</property>
+
+<property>
+    <name>hbase.regionserver.info.port</name>
+    <value>16030</value>
+</property>
+
+<property>
+    <name>hbase.regionserver.handler.count</name>
+    <value>30</value>
+</property>
+
+
+<property>
+  <name>hbase.catalogjanitor.enable</name>
+  <value>true</value>
+</property>
+
+<property>
+  <name>hbase.catalogjanitor.interval</name>
+  <value>300000</value> <!-- Quét mỗi 5 phút -->
+</property>
+
+<property>
+  <name>hbase.catalogjanitor.timeout</name>
+  <value>60000</value> <!-- Timeout là 60 giây -->
+</property>
+
+  
+</configuration>
