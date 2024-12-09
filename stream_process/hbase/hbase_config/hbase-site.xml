@@ -4,14 +4,19 @@
     <value>hbase-master:16000</value> 
   </property>
 
-    <property>
-      <name>hbase.regionserver.port</name>
-      <value>16020</value>
-    </property>
+  <property> 
+    <name>hbase.regionserver.hostname</name>
+    <value>hbase-regionserver</value> 
+  </property>
+
+  <property>
+    <name>hbase.regionserver.port</name>
+    <value>16020</value>
+  </property>
 
   <property>
     <name>hbase.zookeeper.quorum</name>
-    <value>zookeeper1,zookeeper2,zookeeper3</value>
+    <value>zookeeper1</value>
   </property>
 
   <property>
@@ -50,6 +55,11 @@
     <value>/hbase</value>  <!-- Đảm bảo giá trị này là '/hbase' -->
   </property>
 
+  <property>
+    <name>hbase.thrift.port</name>
+    <value>9090</value>
+  </property>
+
   <!-- Kích hoạt Load Balancer -->
   <property>
     <name>hbase.master.loadbalancer</name>
@@ -64,7 +74,23 @@
   <!-- Bật tính năng cân bằng tải tự động -->
   <property>
     <name>hbase.master.balancer.period</name>
-    <value>60000</value> <!-- Cập nhật mỗi 60 giây -->
+    <value>120000</value> <!-- Cập nhật mỗi 60 giây -->
   </property>
+
+  <property>
+    <name>hbase.rpc.timeout</name>
+    <value>120000</value> <!-- 60 giây -->
+  </property>
+
+  <property>
+    <name>hbase.regionserver.lease.period</name>
+    <value>120000</value> <!-- 60 giây -->
+  </property>
+
+  <property>
+    <name>hbase.coprocessor.regionserver.classes</name>
+    <value>com.yourcompany.KafkaObserver</value>
+  </property>
+
 
 </configuration>

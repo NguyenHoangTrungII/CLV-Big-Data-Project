@@ -126,7 +126,7 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 
 # Kết nối tới HBase
 connection = happybase.Connection('localhost')
-table_name = 'clv_predictions_new'
+table_name = 'hbase-clv-topic'
 table = connection.table(table_name)
 
 # Hàm lấy dữ liệu CLV từ HBase

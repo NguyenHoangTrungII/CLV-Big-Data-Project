@@ -75,5 +75,10 @@
   <value>60000</value> <!-- Timeout là 60 giây -->
 </property>
 
+<property>
+  <name>hbase.coprocessor.regionserver.classes</name>
+    <value>com.yourcompany.KafkaObserver</value>
+</property>
+
   
 </configuration>

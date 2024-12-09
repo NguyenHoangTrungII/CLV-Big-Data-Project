@@ -10,7 +10,9 @@ services:
       ZOOKEEPER_TICK_TIME: 2000
     ports:
       - "2181:2181"
-  
+    networks:
+        - hbase-network
+
   # zoo:
   #     image: zookeeper:3.4.10
   #     container_name: zoo
@@ -42,44 +44,49 @@ services:
   #     - "2183:2181"  # Khác cổng để tránh xung đột
 
   zookeeper1:
-    image: confluentinc/cp-zookeeper:latest
+    image: zookeeper:3.4.10   
     container_name: zookeeper1
     ports:
       - "2182:2181"  
     environment:
       ZOO_MY_ID: 1
-      ZOO_SERVERS: "server.1=zookeeper1:2888:3888;server.2=zookeeper2:2888:3888;server.3=zookeeper3:2888:3888"
+      ZOO_SERVERS: "server.1=zookeeper1:2888:3888"
       ZOOKEEPER_CLIENT_PORT: 2181
     volumes:
       - /tmp/zookeeper1/data
       - /tmp/zookeeper1/datalog
+    networks:
+      - hbase-network
 
   zookeeper2:
-    image: confluentinc/cp-zookeeper:latest
+    image: zookeeper:3.4.10
     container_name: zookeeper2
     ports:
       - "2183:2181"  
     environment:
       ZOO_MY_ID: 2
-      ZOO_SERVERS: "server.1=zookeeper1:2888:3888;server.2=zookeeper2:2888:3888;server.3=zookeeper3:2888:3888"
+      ZOO_SERVERS: "server.2=zookeeper2:2888:3888"
       ZOOKEEPER_CLIENT_PORT: 2181
     volumes:
       - /tmp/zookeeper2/data
       - /tmp/zookeeper2/datalog
+    networks:
+      - hbase-network
 
   zookeeper3:
-    image: confluentinc/cp-zookeeper:latest
+    image: zookeeper:3.4.10
     container_name: zookeeper3
     ports:
       - "2184:2181"  
     environment:
       ZOO_MY_ID: 3
-      ZOO_SERVERS: "server.1=zookeeper1:2888:3888;server.2=zookeeper2:2888:3888;server.3=zookeeper3:2888:3888"
+      ZOO_SERVERS: "server.3=zookeeper3:2888:3888"
       ZOOKEEPER_CLIENT_PORT: 2181
     volumes:
       - /tmp/zookeeper3/data
       - /tmp/zookeeper3/datalog
-      
+    networks:
+      - hbase-network
 
   hbase-master:
     build:
@@ -87,7 +94,7 @@ services:
       # dockerfile: stream_process/hbase_distribute/hbase_master/Dockerfile
       dockerfile: stream_process/hbase/Dockerfile
     container_name: hbase-master
-    
+    hostname: hbase-master
     ports:
       - "16010:16010"  # UI port for HBase Master
       - "16000:16000"  # Master port for HBase communication
@@ -111,7 +118,8 @@ services:
     #   timeout: 10s
     #   retries: 5
     command: /bin/sh -c "/usr/local/hbase/bin/hbase master start && tail -f /dev/null"
-    
+    networks:
+      - hbase-network
 
   hbase-regionserver:
     build:
@@ -119,7 +127,7 @@ services:
       # dockerfile: stream_process/hbase_distribute/hbase_regionserver/Dockerfile
       dockerfile: stream_process/hbase/Dockerfile
     container_name: hbase-regionserver
-    
+    hostname: hbase-regionserver
     ports:
       - "16020:16020"  # RegionServer port
       - "16030:16030"
@@ -128,6 +136,7 @@ services:
       - HBASE_MASTER=hbase-master:16000
       - HBASE_REGIONSERVER_OPTS=-Dhbase.regionserver.info.port=16030
       - HBASE_ZOOKEEPER_QUORUM=zookeeper1,zookeeper2, zookeeper3
+      - HBASE_REGIONSERVER_HOSTNAME=hbase-regionserver.clv-big-data-project_hbase-network
     depends_on:
       - hbase-master
     env_file:
@@ -138,7 +147,9 @@ services:
     #   timeout: 10s
     #   retries: 5
     command: /bin/sh -c "/usr/local/hbase/bin/hbase regionserver start && tail -f /dev/null"
-    
+    networks:
+      - hbase-network
+
   # hbase:
   #   # image: bde2020/hbase-standalone:1.0.0-hbase1.2.6
   #   build:
@@ -166,17 +177,19 @@ services:
       context: ./stream_process/kafka
     container_name: kafka
     environment:
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper1:2181
       # KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9093
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://172.20.40.142:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://172.27.254.108:9093
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9093
     ports:
       - "9093:9093"
     depends_on:
-      - zookeeper
+      - zookeeper1
     # networks:
     #   - kafka-network
-    
+    networks:
+      - hbase-network
+
   # hbase:
   #   build:
   #     context: ./stream_process/hbase
@@ -254,7 +267,9 @@ services:
     volumes:
       - hadoop_namenode_data:/usr/local/hadoop/data/name
     command: ["bash", "-c", "service ssh start && /usr/local/hadoop/sbin/start-dfs.sh && /usr/local/hadoop/sbin/start-yarn.sh && tail -f /dev/null"]
-
+    networks:
+      - hbase-network
+    
   datanode:
     build:
       context: ./
@@ -269,7 +284,8 @@ services:
     volumes:
       - hadoop_datanode_data:/usr/local/hadoop/data/datanode
     command: ["bash", "-c", "service ssh start && /usr/local/hadoop/sbin/hadoop-daemon.sh start datanode && tail -f /dev/null"]
-
+    networks:
+      - hbase-network
 
   spark-master:
     # image: clv-big-data-project-spark:latest
@@ -342,7 +358,7 @@ services:
   #     - default
 
 networks:
-  hbase_network:
+  hbase-network:
     driver: bridge
   default:
     driver: bridge

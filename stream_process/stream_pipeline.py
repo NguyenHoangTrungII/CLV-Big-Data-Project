@@ -18,7 +18,7 @@ def producer_thread():
         try:
             send_data()
             logger.info("Message sent to Kafka topic")
-            time.sleep(20)
+            time.sleep(60)
         except Exception as e:
             logger.exception(f"Error in producer_thread: {e}")
 
@@ -38,11 +38,11 @@ if __name__ == "__main__":
     # Create SparkSession ONCE before threads start
     spark = SparkSession.builder \
         .appName("CLV Prediction") \
-        .master("spark://172.29.177.196:7077") \
+        .master("spark://172.27.254.108:7077") \
         .config("spark.sql.execution.arrow.pyspark.enabled", "true") \
         .config("spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.1.2") \
         .config("spark.driver.port", "10027") \
-        .config("spark.driver.host", "172.29.177.196")\
+        .config("spark.driver.host", "172.27.254.108")\
         .config("spark.executor.heartbeatInterval", "60s")  \
         .config("spark.network.timeout", "120s")  \
         .getOrCreate()

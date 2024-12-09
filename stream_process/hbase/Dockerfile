@@ -18,6 +18,8 @@ COPY ./stream_process/hbase/hbase_config/core-site.xml /usr/local/hbase/conf/
 # Copy the coprocessor jar file to the HBase container
 COPY ./stream_process/hbase/hbase_coprocessors/hbase-coprocessor-example.jar /opt/hbase/coprocessors/
 
+RUN echo "export HBASE_CLASSPATH=\$HBASE_CLASSPATH:/opt/hbase/coprocessors/hbase-coprocessor-example.jar" >> /usr/local/hbase/conf/hbase-env.sh
+
 # Sửa file hbase-env.sh để loại bỏ lỗi PermSize
 RUN sed -i 's/-XX:PermSize=128m -XX:MaxPermSize=128m/-Xms512m -Xmx1024m/g' /usr/local/hbase/conf/hbase-env.sh
 
