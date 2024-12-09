@@ -35,3 +35,5 @@ export HBASE_REGIONSERVER_MAX_REGIONS="1000"  # Đặt số lượng region tố
 
 # Các tham số khác (có thể thêm hoặc thay đổi theo nhu cầu của bạn)
 export HBASE_LOG_LEVEL="INFO"  # Mức độ log (DEBUG, INFO, WARN, ERROR)
+
+export HBASE_REGIONSERVER_HEAPSIZE=2G

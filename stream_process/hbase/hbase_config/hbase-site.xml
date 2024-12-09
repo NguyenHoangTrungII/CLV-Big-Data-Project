@@ -4,19 +4,19 @@
     <value>hbase-master:16000</value> 
   </property>
 
-  <property>
-    <name>hbase.regionserver.host</name>
-    <value>hbase-regionserver</value>
-  </property>
-
-  <property>
-    <name>hbase.regionserver</name>
-    <value>hbase-regionserver:16020</value> 
-  </property>
+    <property>
+      <name>hbase.regionserver.port</name>
+      <value>16020</value>
+    </property>
 
   <property>
     <name>hbase.zookeeper.quorum</name>
     <value>zookeeper1,zookeeper2,zookeeper3</value>
+  </property>
+
+  <property>
+    <name>zookeeper.session.timeout</name>
+    <value>60000</value>
   </property>
   
   <property>
