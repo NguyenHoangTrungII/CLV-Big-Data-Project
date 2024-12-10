@@ -61,13 +61,13 @@ export class DashboardComponent implements OnInit {
   // Cập nhật danh sách top 10 CLV
   updateTopCLV(data: any): void {
     // Thêm người dùng mới vào mảng users hoặc cập nhật CLV của họ
-    const existingUserIndex = this.users.findIndex(user => user.name === data.name);
+    const existingUserIndex = this.users.findIndex(user => user.name === data.key);
     if (existingUserIndex !== -1) {
       // Cập nhật CLV nếu người dùng đã có trong danh sách
       this.users[existingUserIndex].clv = data.clv;
     } else {
       // Thêm người dùng mới vào danh sách
-      this.users.push({ name: data.name, clv: data.clv });
+      this.users.push({ name: data.key, clv: data.clv });
     }
 
     // Sắp xếp danh sách theo CLV giảm dần và chỉ lấy top 10

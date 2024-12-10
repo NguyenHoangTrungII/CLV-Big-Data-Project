@@ -8,7 +8,8 @@ import pandas as pd
 import threading
 from stream_process.hbase.hbase_scripts.hbase_consumer import insert_data_to_hbase, connect_to_hbase
 
-from batch_process.spark.spark_scripts.spark_processing import process_streaming_features,clean_and_transform_data
+from batch_process.spark.spark_scripts.spark_processing import process_streaming_features,clean_and_transform_data, write_to_hbase
+from pyspark.sql.functions import lit
 
 # Initialize logging
 logging.basicConfig(level=logging.INFO)
@@ -16,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 # Kafka configuration
 KAFKA_TOPIC = 'CLV_system_nhtrung'
-KAFKA_BOOTSTRAP_SERVERS = '172.29.177.196:9093'
+KAFKA_BOOTSTRAP_SERVERS = '172.27.254.108:9093'
 
 # Schema for incoming Kafka data
 schema = StructType([
@@ -93,7 +94,7 @@ def connect_and_save_to_hbase(df_with_predictions):
 
     print("Sucess insert into hbase") 
 
-def process_batch(batch_df, batch_id, predict_udf, connection):
+def process_batch(batch_df, batch_id, predict_udf):
     if batch_df.isEmpty():
         print(f"Batch {batch_id} is empty!")
         return
@@ -101,8 +102,8 @@ def process_batch(batch_df, batch_id, predict_udf, connection):
     
     # Xử lý batch
     try:
+        # processed_df_before =[]
         processed_df_before = clean_and_transform_data(batch_df)
-
         processed_df = process_streaming_features(processed_df_before)
     except Exception as e:
         logger.error(f"Error during pre-data for prediction: {e}")
@@ -110,29 +111,82 @@ def process_batch(batch_df, batch_id, predict_udf, connection):
    # Thực hiện dự đoán với mô hình ML
     try:
         features = processed_df.toPandas()
-        df_with_predictions = processed_df_before.toPandas()
+        # features = processed_df_before.toPandas()
+
+        df_with_predictions = processed_df_before
 
         print("Features (Pandas DataFrame) Info:")
         print(features.info())  # In thông tin chi tiết
         print("Features Head:")
         print(features.head())  # In một vài dòng đầu tiên        
         predictions = model.predict(features)
-        df_with_predictions["CLV_Prediction"] = predictions[0][0] 
+
+        prediction_value = float(predictions[0][0])
+
+        # df_with_predictions["CLV_Prediction"] = predictions[0][0] 
+        df_with_predictions = df_with_predictions.withColumn(
+            "CLV_Prediction", lit(prediction_value)
+        )
 
         # Log kết quả
-        print("Predicted Batch Data:")
-        print(df_with_predictions['InvoiceDate'])
+        # print("Predicted Batch Data:")
+        # print(df_with_predictions['InvoiceDate'])
 
+       
+        # spark = batch_df.sql_ctx.sparkSession  # Lấy SparkSession từ batch_df
+        
+        # # Tắt Arrow nếu cần
+        # spark.conf.set("spark.sql.execution.arrow.pyspark.enabled", "false")
+
+        # # Chuyển đổi Pandas DataFrame sang Spark DataFrame
+        # data = features.to_dict(orient='records') 
+
+        # spark_df_with_predictions = spark.createDataFrame(features)
         #connect and save data to hbase
         # connect_and_save_to_hbase(df_with_predictions)
 
-        insert_data_to_hbase(connection, df_with_predictions)
-
-        print("Sucess insert into hbase") 
+        # insert_data_to_hbase(connection, df_with_predictions)
+        connect_and_save_to_hbase(df_with_predictions.toPandas())
+        # write_to_hbase(df_with_predictions, table_name="hbase-clv")
+        # print("Sucess insert into hbase") 
 
     except Exception as e:
         logger.error(f"Error during model prediction: {e}")
-        
+
+
+from happybase import ConnectionPool
+
+# Centralized HBase connection configuration
+HBASE_CONFIG = {
+    'host': 'localhost',  # Replace with actual HBase host
+    'port': 9090,  # Default Thrift port, adjust if different
+    'timeout': 10000  # Increased timeout in milliseconds
+}
+
+HBASE_POOL_SIZE = 5
+
+# Create connection pool with more robust configuration
+try:
+    connection_pool = ConnectionPool(
+        size=HBASE_POOL_SIZE, 
+        host=HBASE_CONFIG['host'], 
+        port=HBASE_CONFIG['port'], 
+        timeout=HBASE_CONFIG['timeout']
+    )
+except Exception as pool_err:
+    logger.error(f"Failed to create connection pool: {pool_err}")
+
+def connect_and_save_to_hbase(df_with_predictions):
+    print("Starting to consume...") 
+    try:
+        # Lấy kết nối từ pool
+        with connection_pool.connection() as connection:
+            insert_data_to_hbase(connection, df_with_predictions)
+        print("Success insert into HBase")
+    except Exception as e:
+        print(f"Error during HBase operation: {e}")
+
+
 def consume_and_preprocess(spark, predict_udf_func):
     try:
         kafka_df = spark.readStream.format("kafka") \
@@ -140,20 +194,22 @@ def consume_and_preprocess(spark, predict_udf_func):
             .option("subscribe", KAFKA_TOPIC) \
             .option("startingOffsets", "latest") \
             .load()
+        
         kafka_df = kafka_df.selectExpr("CAST(value AS STRING)")
         parsed_df = kafka_df.withColumn("data", from_json(col("value"), schema)).select("data.*")
-        # parsed_df = parsed_df.dropna()
+        parsed_df = parsed_df.dropna()
+        # print(parsed_df)
 
         # Connect to HBase
-        try:
-            connection = connect_to_hbase()
-        except Exception as e:
-            print("Fail to connect", e)
+        # try:
+        #     connection = connect_to_hbase()
+        # except Exception as e:
+        #     print("Fail to connect", e)
         
          
         query = parsed_df \
             .writeStream \
-            .foreachBatch(lambda batch_df, batch_id: process_batch(batch_df, batch_id, predict_udf_func, connection)) \
+            .foreachBatch(lambda batch_df, batch_id: process_batch(batch_df, batch_id, predict_udf_func)) \
             .start()
         
 

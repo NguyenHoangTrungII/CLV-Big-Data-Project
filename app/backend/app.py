@@ -117,47 +117,35 @@
 
 from flask import Flask
 from flask_socketio import SocketIO
-import happybase
-import time
+from kafka import KafkaConsumer
 import threading
+import json
 
 app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*")
 
-# Kết nối tới HBase
-connection = happybase.Connection('localhost')
-table_name = 'hbase-clv-topic'
-table = connection.table(table_name)
+# Cấu hình Kafka Consumer
+KAFKA_BROKER = '172.27.254.108:9093'  # Địa chỉ Kafka broker của bạn
+KAFKA_TOPIC = 'hbase-clv-topic'  # Tên Kafka topic bạn muốn tiêu thụ
+consumer = KafkaConsumer(
+    KAFKA_TOPIC,
+    bootstrap_servers=[KAFKA_BROKER],
+    group_id='clv-consumer-group',
+    value_deserializer=lambda x: json.loads(x.decode('utf-8'))
+)
 
-# Hàm lấy dữ liệu CLV từ HBase
-def get_clv_data():
-    rows = table.scan(limit=10)  # Lấy 10 bản ghi gần nhất từ bảng
-    clv_data = []
-    for key, data in rows:
-        try:
-            clv = float(data.get(b'cf:CLV_Prediction', b'0'))  # Chuyển giá trị sang float
-            clv_data.append({
-                'name': key.decode('utf-8'),  # Key là tên khách hàng
-                'clv': clv  # Giá trị CLV
-            })
-        except (ValueError, TypeError) as e:
-            print(f"Error processing CLV data for key {key}: {e}")
-    return clv_data
-
-# Hàm gửi dữ liệu CLV real-time
+# Hàm gửi dữ liệu CLV real-time từ Kafka tới client
 def emit_clv_data():
-    while True:
-        clv_data = get_clv_data()  # Lấy dữ liệu từ HBase
-        for data in clv_data:
-            # Gửi dữ liệu qua sự kiện 'new_clv_data'
-            socketio.emit('new_clv_data', data)
-        time.sleep(60)  # Gửi dữ liệu mỗi 2 giây
+    for message in consumer:
+        data = message.value  # Lấy dữ liệu từ Kafka
+        # Gửi dữ liệu qua SocketIO
+        socketio.emit('new_clv_data', data)
 
 # Khi client kết nối
 @socketio.on('connect')
 def handle_connect():
     print("Client connected")
-    # Chạy luồng nền để gửi dữ liệu CLV
+    # Chạy luồng nền để gửi dữ liệu từ Kafka
     socketio.start_background_task(target=emit_clv_data)
 
 # Khi client ngắt kết nối

@@ -31,7 +31,7 @@ def prepare_message(row):
 # # Thiết lập Kafka producer
 producer = KafkaProducer(
     # bootstrap_servers='localhost:9093',
-    bootstrap_servers='172.27.254.108:9093',  
+    bootstrap_servers='localhost:9093',  
     value_serializer=lambda v: json.dumps(serialize_data(v)).encode('utf-8')
 )
 
@@ -46,7 +46,7 @@ def send_data():
         try:
             producer.send('CLV_system_nhtrung', value=message)
             print(f"Sent message {index}: {message}")
-            time.sleep(5)  # Thêm độ trễ trước khi gửi dòng tiếp theo
+            time.sleep(20)  # Thêm độ trễ trước khi gửi dòng tiếp theo
         except Exception as e:
             print(f"Error in row {index}: {e}")
     

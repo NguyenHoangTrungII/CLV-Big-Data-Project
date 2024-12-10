@@ -1,148 +1,98 @@
-# import time
-# import threading
-# import logging
-# from pyspark.sql import SparkSession
-# from stream_process.kafka.kafka_scripts.send_fake_data import send_data
-# from batch_process.hadoop.hadoop_scripts.hadoop_consumer import consume_hdfs
-# from batch_process.spark.spark_scripts.spark_processing import spark_processing
-# from batch_process.spark.spark_scripts.stream_clv_prediction import consume_and_preprocess, register_udf
+from pyspark.sql import SparkSession
+from pyspark.sql.types import StructType, StructField, StringType, FloatType
 
-# # Initialize logging
-# logging.basicConfig(level=logging.INFO)
-# logger = logging.getLogger(__name__)
+def create_spark_session():
+    """
+    Create Spark Session with HBase connector using Maven dependencies
+    """
+    spark = SparkSession.builder \
+        .appName("HBase Data Connector") \
+        .config("spark.jars.packages", 
+            "org.apache.spark:spark-sql-kafka-0-10_2.12:3.1.2," +
+            "org.apache.hbase:hbase-client:2.4.17," +
+            "org.apache.hbase:hbase-mapreduce:2.4.17," +
+            "org.slf4j:slf4j-api:1.7.36,"+
+            "org.apache.hbase.connectors.spark:hbase-spark:1.0.1,"+
+            "org.apache.curator:curator-recipes:3.0.0,") \
+        .config("spark.jars.excludes", "org.slf4j:slf4j-log4j12") \
+        .config("hbase.zookeeper.quorum", "localhost") \
+        .config("hbase.zookeeper.property.clientPort", "2181") \
+        .getOrCreate()
+    return spark
 
-# # Global flag to stop threads gracefully
-# stop_threads = False
-
-# # ================================
-# # Producer for Kafka
-# # ================================
-# def kafka_producer_thread():
-#     """
-#     Continuously sends fake data to Kafka.
-#     """
-#     global stop_threads
-#     while not stop_threads:
-#         try:
-#             send_data()
-#             logger.info("[Kafka Producer] Message sent to Kafka topic")
-#             time.sleep(5)
-#         except Exception as e:
-#             logger.exception(f"[Kafka Producer] Error: {e}")
-
-# # ================================
-# # Batch Consumer (HDFS -> Spark)
-# # ================================
-# def batch_consumer_thread():
-#     """
-#     Consumes data from HDFS and processes it using Spark (batch).
-#     """
-#     global stop_threads
-#     while not stop_threads:
-#         try:
-#             logger.info("[Batch Consumer] Consuming data from HDFS...")
-#             consume_hdfs()
-#             spark_processing(spark)
-#             time.sleep(10)
-#         except Exception as e:
-#             logger.exception(f"[Batch Consumer] Error: {e}")
-
-# # ================================
-# # Stream Consumer (Kafka -> Spark)
-# # ================================
-# def stream_consumer_thread(spark):
-#     """
-#     Consumes data from Kafka and processes it using Spark Streaming.
-#     """
-#     global stop_threads
-#     predict_udf_func = register_udf(spark)  # Register UDF after Spark initialization
-#     while not stop_threads:
-#         try:
-#             logger.info("[Stream Consumer] Processing streaming data...")
-#             consume_and_preprocess(spark, predict_udf_func)
-#             time.sleep(3)
-#         except Exception as e:
-#             logger.exception(f"[Stream Consumer] Error: {e}")
-
-# # ================================
-# # Main: Thread Management
-# # ================================
-# if __name__ == "__main__":
-#     # Initialize SparkSession
-#     # spark = SparkSession.builder \
-#     #     .appName("Batch and Stream Pipeline") \
-#     #     .config("spark.sql.execution.arrow.pyspark.enabled", "true") \
-#     #     .config("spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.1.2") \
-#     #     .getOrCreate()
-
-#     spark = SparkSession.builder \
-#     .appName("Batch and Stream Pipeline") \
-#     .config("spark.sql.execution.arrow.pyspark.enabled", "true") \
-#     .config("spark.executor.memory", "1g") \
-#     .config("spark.executor.cores", "1") \
-#     .config("spark.sql.shuffle.partitions", "2") \
-#     .config("spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.1.2") \
-#     .getOrCreate()
-
-#     # Create threads
-#     kafka_producer = threading.Thread(target=kafka_producer_thread, name="KafkaProducerThread")
-#     # batch_consumer = threading.Thread(target=batch_consumer_thread,  name="BatchConsumerThread")
-#     stream_consumer = threading.Thread(target=stream_consumer_thread, args=(spark,), name="StreamConsumerThread")
-
-#     # Start threads
-#     kafka_producer.start()
-#     # batch_consumer.start()
-#     stream_consumer.start()
-
-#     try:
-#         # Wait for threads (infinite loop unless interrupted)
-#         kafka_producer.join()
-#         # batch_consumer.join()
-#         stream_consumer.join()
-#     except KeyboardInterrupt:
-#         # Gracefully stop all threads
-#         stop_threads = True
-#         kafka_producer.join()
-#         # batch_consumer.join()
-#         stream_consumer.join()
-#         logger.info("Pipeline shutdown completed.")
-#         spark.stop()
-
-import time
-import happybase
-
-def connect_to_hbase():
+def write_to_hbase(spark, dataframe, table_name):
+    """
+    Write Spark DataFrame to HBase
+    """
     try:
-        connection = happybase.Connection(host='localhost')
-        connection.open()
-        print("Connected to HBase successfully.")
-        return connection
+        # HBase catalog configuration
+        hbase_catalog = """
+        {
+            "table": {
+                "namespace": "default",
+                "name": "hbase-clv"
+            },
+            "rowkey": "key",
+            "columns": {
+                "key": {
+                    "cf": "cf",
+                    "col": "key",
+                    "type": "string"
+                },
+                "invoice_no": {
+                    "cf": "cf",
+                    "col": "invoice_no",
+                    "type": "string"
+                },
+                "clv_prediction": {
+                    "cf": "cf",
+                    "col": "clv_prediction",
+                    "type": "float"
+                }
+            }
+        }
+        """
+
+        print("HBase Catalog:")
+        print(hbase_catalog)
+
+        # Write data to HBase
+        dataframe.write \
+            .format("org.apache.hadoop.hbase.spark") \
+            .option("hbase.catalog", hbase_catalog) \
+            .mode("append") \
+            .save()
+        
+        print(f"Successfully wrote data to HBase table: {table_name}")
+    
     except Exception as e:
-        print(f"Error connecting to HBase: {e}")
-        return None
+        print(f"Error writing to HBase: {e}")
+        import traceback
+        traceback.print_exc()
 
-def insert_data(connection):
-    try:
-        table = connection.table('clv_predictions')
-        row_key = '536365-17850'
-        # data = {
-        #     'cf:Quantity': b'6',
-        #     'cf:UnitPrice': b'3.390000104904175',
-        #     'cf:InvoiceDate': b'2010-12-01T08:26:00',
-        #     'cf:dayofweek': b'4',
-        #     'cf:weekend': b'0',
-        #     'cf:Revenue': b'20.34000015258789',
-        #     'cf:CLV_Prediction': b'31.9216251373291'
-        # }
-        data = {'cf:Quantity': b'1', 'cf:UnitPrice': b'1.0'}
+def main():
+    # Step 1: Create Spark session
+    spark = create_spark_session()
+    
+    # Step 2: Define schema
+    schema = StructType([
+        StructField("key", StringType(), False),
+        StructField("invoice_no", StringType(), True),
+        StructField("clv_prediction", FloatType(), True)
+    ])
+    
+    # Step 3: Create sample data
+    data = [
+        ("row1", "INV001", 100.5),
+        ("row2", "INV002", 200.7),
+        ("row3", "INV003", 150.3)
+    ]
+    
+    # Step 4: Create DataFrame
+    df = spark.createDataFrame(data, schema)
+    
+    # Step 5: Write DataFrame to HBase
+    write_to_hbase(spark, df, "hbase-clv")
 
-        table.put(row_key, data)
-        print("Data inserted successfully.")
-    except Exception as e:
-        print(f"Error inserting data: {e}")
-
-# Connect and insert
-connection = connect_to_hbase()
-if connection:
-    insert_data(connection)
-    connection.close()
+if __name__ == "__main__":
+    main()

@@ -37,7 +37,7 @@ def connect_to_hbase():
         print(f"Error connecting to HBase: {e}")
         return None
 
-def insert_data_to_hbase(connection, df, table_name='hbase-clv-topic'):
+def insert_data_to_hbase(connection, df, table_name='test'):
 
     try:
         table = connection.table(table_name)

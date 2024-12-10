@@ -351,5 +351,55 @@ def spark_processing(spark):
     print("Processing complete!")
 
 
+def write_to_hbase(dataframe, table_name='hbase-clv'):
+    """
+    Write Spark DataFrame to HBase with custom column mappings and rowkey generation.
+    """
+    try:
+        # Tạo một cột "rowkey" dựa trên logic trong insert_data_to_hbase
+        from pyspark.sql.functions import concat_ws, lit, col
+
+        dataframe = dataframe.withColumn(
+            "rowkey", 
+            concat_ws("-", 
+                      col("InvoiceNo").cast("string"), 
+                      col("CustomerID").cast("string"))
+        )
+
+        # Ánh xạ dữ liệu đến các column family và cột trong HBase
+        catalog = f"""
+        {{
+            "table":{{"namespace":"default", "name":"{table_name}"}},
+            "rowkey":"rowkey",
+            "columns":{{
+                "rowkey":{{"cf":"rowkey", "col":"key", "type":"string"}},
+                "Quantity":{{"cf":"cf", "col":"Quantity", "type":"string"}},
+                "UnitPrice":{{"cf":"cf", "col":"UnitPrice", "type":"string"}},
+                "InvoiceDate":{{"cf":"cf", "col":"InvoiceDate", "type":"string"}},
+                "hour":{{"cf":"cf", "col":"hour", "type":"string"}},
+                "dayofweek":{{"cf":"cf", "col":"dayofweek", "type":"string"}},
+                "weekend":{{"cf":"cf", "col":"weekend", "type":"string"}},
+                "Revenue":{{"cf":"cf", "col":"Revenue", "type":"string"}},
+                "CLV_Prediction":{{"cf":"cf", "col":"CLV_Prediction", "type":"string"}}
+            }}
+        }}
+        """
+
+        # Ghi dữ liệu vào HBase
+        dataframe.write \
+            .format("org.apache.hadoop.hbase.spark") \
+            .option("hbase.catalog", catalog) \
+            .option("hbase.table", table_name) \
+            .mode("append") \
+            .save()
+
+        print(f"Successfully wrote data to HBase table: {table_name}")
+
+    except Exception as e:
+        print(f"Error writing to HBase: {e}")
+        import traceback
+        traceback.print_exc()
+
+
 if __name__ == "__main__":
     spark_processing()

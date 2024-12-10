@@ -96,6 +96,7 @@ services:
     container_name: hbase-master
     hostname: hbase-master
     ports:
+      - "9090:9090"
       - "16010:16010"  # UI port for HBase Master
       - "16000:16000"  # Master port for HBase communication
     environment:
@@ -303,6 +304,8 @@ services:
     # networks:
     #   - spark-network
     command: ["/usr/local/spark/sbin/start-master.sh", "--host", "0.0.0.0", "--port", "7077", "--webui-port", "8080"]
+    networks:
+      - hbase-network
 
   spark-worker:
     # image: clv-big-data-project-spark:latest
@@ -311,9 +314,10 @@ services:
     container_name: spark-worker
     environment:
       - SPARK_MODE=worker
-      # - SPARK_MASTER=spark://172.20.40.142:7077
-
       - SPARK_MASTER=spark://spark-master:7077
+      - SPARK_WORKER_MEMORY=4g      # Tăng bộ nhớ (ví dụ, 4GB)
+      - SPARK_WORKER_CORES=4
+      # - SPARK_MASTER=spark://spark-master:7077
     depends_on:
       - spark-master
     # networks:
@@ -321,7 +325,9 @@ services:
     ports:
       - "8081:8081"   # Spark worker UI port
     command: ["/bin/sh", "-c", "until nc -z spark-master 7077; do echo waiting for spark-master; sleep 2; done; /usr/local/spark/sbin/start-worker.sh spark://spark-master:7077"]
-
+    networks:
+      - hbase-network
+      
   postgres:
     build:
       context: ./batch_process/postgres
@@ -344,6 +350,8 @@ services:
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
     depends_on:
       - postgres
+    networks:
+      - hbase-network
 
   # python-runner:
   #   build:
