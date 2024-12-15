@@ -38,6 +38,7 @@ ENV DFS_REPLICATION=3
 ENV NAMENODE_DIR="file:///usr/local/hadoop/data/name"
 ENV DATANODE_DIR="file:///usr/local/hadoop/data/datanode"
 ENV HADOOP_NAMENODE_HOST="namenode"
+# ENV HADOOP_NAMENODE_HOST="172.23.217.20"
 ENV HADOOP_NAMENODE_PORT="9000"
 ENV PATH=$JAVA_HOME/bin:$PATH
 
@@ -54,7 +55,7 @@ RUN mkdir -p /usr/local/hadoop/logs && \
     chown -R root:root /usr/local/hadoop
 
 # Format NameNode (nếu chưa format trước đó)
-RUN $HADOOP_HOME/bin/hdfs namenode -format
+# RUN $HADOOP_HOME/bin/hdfs namenode -format
 
 #Sao chép file HBase Coprocessor jar vào container
 COPY ./stream_process/hbase/hbase_config/hbase-coprocessor-example.jar /tmp/hbase-coprocessor-example.jar

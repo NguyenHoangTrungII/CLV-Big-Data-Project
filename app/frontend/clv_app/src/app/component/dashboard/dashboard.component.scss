@@ -1,10 +1,77 @@
 .dashboard-container {
-    width: 80%;
-    margin: auto;
-    padding: 20px;
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.chart-container {
+  width: 48%;
+}
+
+.leaderboard-container {
+  width: 48%;
+  padding: 15px;
+  background-color: #f4f4f4;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.leaderboard-container h3 {
+  margin-bottom: 10px;
+  font-size: 20px;
+  text-align: center;
+  font-weight: bold;
+}
+
+.leaderboard-container ul {
+  list-style-type: none;
+  padding: 0;
+}
+
+.leaderboard-container li {
+  font-size: 16px;
+  margin-bottom: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: transform 0.3s ease-in-out;
+  padding: 10px;
+  border: 2px solid #5bb2d582;
+  border-radius: 7px; /* Smooth transform transition */
+}
+
+.leaderboard-container li span {
+  font-weight: bold;
+  color: #333;
+}
+
+.leaderboard-container li:hover {
+  transform: scale(1.05); /* Đẩy mục lên khi hover */
+  background-color: #e6f7ff; /* Thêm màu nền khi hover */
+}
+
+.leaderboard-container li:nth-child(even) {
+  background-color: #f9f9f9; /* Đổi màu nền cho các mục chẵn */
+}
+
+.leaderboard-container li:nth-child(odd) {
+  background-color: #ffffff; /* Đổi màu nền cho các mục lẻ */
+}
+
+/* Hiệu ứng nhảy bật khi hover */
+.leaderboard-container li:hover {
+  animation: bounce 0.5s ease-in-out;
+}
+
+@keyframes bounce {
+  0% {
+    transform: translateY(0);
   }
-  
-  canvas {
-    max-width: 100%;
+  50% {
+    transform: translateY(-10px);
   }
-  
+  100% {
+    transform: translateY(0);
+  }
+}

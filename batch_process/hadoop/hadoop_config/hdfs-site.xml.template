@@ -1,28 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
 
+  <property>
+    <name>dfs.namenode.http-address</name>
+    <value>0.0.0.0:50070</value>
+  </property>
+
+  <property>
+    <name>dfs.datanode.address</name>
+    <value>0.0.0.0:50010</value>
+  </property>
+
+  <property>
+    <name>dfs.namenode.rpc-address</name>
+    <value>namenode:9000</value>
+  </property>
+
+
   <!-- Configuring the HDFS replication factor -->
   <property>
     <name>dfs.replication</name>
-    <value>${DFS_REPLICATION}</value>
+    <value>1</value>
   </property>
 
   <!-- Configuring the NameNode's directory -->
   <property>
     <name>dfs.namenode.name.dir</name>
-    <value>${NAMENODE_DIR}</value>
+    <value>file:///usr/local/hadoop/data/name</value>
   </property>
 
   <!-- Configuring the DataNode's directory -->
   <property>
     <name>dfs.datanode.data.dir</name>
-    <value>${DATANODE_DIR}</value>
-  </property>
-
-  <!-- Specifying the host for the HDFS NameNode -->
-  <property>
-    <name>fs.defaultFS</name>
-    <value>hdfs://${HADOOP_NAMENODE_HOST}:${HADOOP_NAMENODE_PORT}</value>
+    <value>file:///usr/local/hadoop/data/datanode</value>
   </property>
 
   <!-- Enabling HDFS to run in a secure mode -->
@@ -30,5 +40,17 @@
     <name>dfs.permissions</name>
     <value>false</value>
   </property>
+
+  <property>
+    <name>dfs.client.use.datanode.hostname</name>
+    <value>true</value>
+  </property>
+
+  <property>
+  <name>dfs.webhdfs.enabled</name>
+    <value>true</value>
+  </property>
+
+
 
 </configuration>

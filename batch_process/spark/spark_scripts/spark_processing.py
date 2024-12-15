@@ -19,7 +19,6 @@ def create_spark_session():
         .getOrCreate()
     return spark
 
-
 def read_data_from_hdfs(spark, file_path):
     """
     Read data from HDFS.
@@ -32,7 +31,6 @@ def read_data_from_hdfs(spark, file_path):
     """
     df = spark.read.csv(file_path, header=True, inferSchema=True)
     return df
-
 
 def clean_and_transform_data(df):
     """
@@ -216,7 +214,6 @@ def get_features_spark_to_pandas(data, feature_percentage=0.8):
 #         "purchase_weekend_prop"
 #     )
 
-
 def process_streaming_features(data):
     """
     Extracts features from a Spark DataFrame in real-time, without splitting into
@@ -308,7 +305,6 @@ def process_streaming_features(data):
     # Return the processed feature data for real-time prediction
     return final_data
 
-
 def spark_processing(spark):
     """
     Main program for data processing.
@@ -349,7 +345,6 @@ def spark_processing(spark):
     load_and_finetune_model(path, X_train, y_train)
 
     print("Processing complete!")
-
 
 def write_to_hbase(dataframe, table_name='hbase-clv'):
     """
@@ -399,7 +394,6 @@ def write_to_hbase(dataframe, table_name='hbase-clv'):
         print(f"Error writing to HBase: {e}")
         import traceback
         traceback.print_exc()
-
 
 if __name__ == "__main__":
     spark_processing()

@@ -13,36 +13,6 @@ services:
     networks:
         - hbase-network
 
-  # zoo:
-  #     image: zookeeper:3.4.10
-  #     container_name: zoo
-  #     # environment:
-  #       # ZOO_MY_ID: 1
-  #       # ZOO_SERVERS: server.1=0.0.0.0:2888:3888
-  #     ports:
-  #       - 2186:2181
-  # zookeeper1:
-  #   image: confluentinc/cp-zookeeper
-  #   container_name: zookeeper1
-  #   environment:
-  #     ZOOKEEPER_CLIENT_PORT: 2181
-  #     # ZOOKEEPER_SERVER_ID: 1
-  #     ZOOKEEPER_TICK_TIME: 2000
-  #     # ZOOKEEPER_SERVERS: "zookeeper1:2888:3888,zookeeper2:2888:3888" 
-  #   ports:
-  #     - "2182:2181"
-
-  # zookeeper2:
-  #   image: confluentinc/cp-zookeeper
-  #   container_name: zookeeper2
-  #   environment:
-  #     ZOOKEEPER_CLIENT_PORT: 2181
-  #     ZOOKEEPER_TICK_TIME: 2000
-  #     ZOOKEEPER_SERVER_ID: 2
-  #     # ZOOKEEPER_SERVERS: "zookeeper1:2888:3888,zookeeper2:2888:3888" 
-  #   ports:
-  #     - "2183:2181"  # Khác cổng để tránh xung đột
-
   zookeeper1:
     image: zookeeper:3.4.10   
     container_name: zookeeper1
@@ -91,7 +61,6 @@ services:
   hbase-master:
     build:
       context: ./
-      # dockerfile: stream_process/hbase_distribute/hbase_master/Dockerfile
       dockerfile: stream_process/hbase/Dockerfile
     container_name: hbase-master
     hostname: hbase-master
@@ -180,14 +149,14 @@ services:
     environment:
       KAFKA_ZOOKEEPER_CONNECT: zookeeper1:2181
       # KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9093
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://172.27.254.108:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://172.27.179.20:9093
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9093
     ports:
       - "9093:9093"
+    volumes:
+      - ./stream_process/kafka/kafka_config/server.properties:/usr/local/kafka/config/server.properties
     depends_on:
       - zookeeper1
-    # networks:
-    #   - kafka-network
     networks:
       - hbase-network
 
@@ -259,15 +228,11 @@ services:
       dockerfile: batch_process/hadoop/Dockerfile
     container_name: namenode
     ports:
-      - "50070:50070"   # Web UI của NameNode
-      - "9000:9000"     # Hadoop HDFS
-    environment:
-      - HADOOP_HOME=/usr/local/hadoop
-      - HADOOP_NAMENODE_HOST=namenode
-      - HADOOP_NAMENODE_PORT=9000
+      - "50070:50070"   
+      - "9000:9000"     
     volumes:
       - hadoop_namenode_data:/usr/local/hadoop/data/name
-    command: ["bash", "-c", "service ssh start && /usr/local/hadoop/sbin/start-dfs.sh && /usr/local/hadoop/sbin/start-yarn.sh && tail -f /dev/null"]
+    command: ["bash", "-c", "service ssh start && /usr/local/hadoop/sbin/hadoop-daemon.sh start namenode && tail -f /dev/null"]    
     networks:
       - hbase-network
     
@@ -276,15 +241,15 @@ services:
       context: ./
       dockerfile: batch_process/hadoop/Dockerfile
     container_name: datanode
+    ports:
+      - 50010:50010
     depends_on:
       - namenode
-    environment:
-      - HADOOP_HOME=/usr/local/hadoop
-      - HADOOP_NAMENODE_HOST=namenode
-      - HADOOP_NAMENODE_PORT=9000
+    # environment:
+    #   SERVICE_PRECONDITION: "namenode:50070"
     volumes:
       - hadoop_datanode_data:/usr/local/hadoop/data/datanode
-    command: ["bash", "-c", "service ssh start && /usr/local/hadoop/sbin/hadoop-daemon.sh start datanode && tail -f /dev/null"]
+    command: ["bash", "-c", "/usr/local/hadoop/sbin/hadoop-daemon.sh start datanode && tail -f /dev/null"]
     networks:
       - hbase-network
 
@@ -295,7 +260,7 @@ services:
     container_name: spark-master
     environment:
       - SPARK_MODE=master
-      - SPARK_MASTER=spark://spark-master:7077
+      - SPARK_MASTER=spark://172.27.179.20:7077
       # - SPARK_MASTER=spark://172.20.40.142:7077
       # - SPARK_LOCAL_HOSTNAME=172.20.40.142  # Địa chỉ IP của máy host
     ports:
@@ -314,7 +279,7 @@ services:
     container_name: spark-worker
     environment:
       - SPARK_MODE=worker
-      - SPARK_MASTER=spark://spark-master:7077
+      - SPARK_MASTER=spark://172.27.179.20:7077
       - SPARK_WORKER_MEMORY=4g      # Tăng bộ nhớ (ví dụ, 4GB)
       - SPARK_WORKER_CORES=4
       # - SPARK_MASTER=spark://spark-master:7077
@@ -324,7 +289,7 @@ services:
     #   - spark-network
     ports:
       - "8081:8081"   # Spark worker UI port
-    command: ["/bin/sh", "-c", "until nc -z spark-master 7077; do echo waiting for spark-master; sleep 2; done; /usr/local/spark/sbin/start-worker.sh spark://spark-master:7077"]
+    command: ["/bin/sh", "-c", "until nc -z spark-master 7077; do echo waiting for spark-master; sleep 2; done; /usr/local/spark/sbin/start-worker.sh spark://172.27.179.20:7077"]
     networks:
       - hbase-network
       
@@ -338,6 +303,8 @@ services:
       POSTGRES_USER: airflow
       POSTGRES_PASSWORD: airflow
       POSTGRES_DB: airflow
+    networks:
+      - hbase-network
 
   airflow:
     build:
@@ -346,13 +313,16 @@ services:
     ports:
       - "8082:8080"
     environment:
-      AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
-      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      - AIRFLOW_HOME=/usr/local/airflow
+      - AIRFLOW__CORE__DAGS_FOLDER=./orchestration/dags
+    volumes:
+      - ./airflow:/usr/local/airflow
+      - ./orchestration:/usr/local/airflow/orchestration
     depends_on:
       - postgres
     networks:
       - hbase-network
-
+    command: ["airflow", "webserver", "--port", "8080"]
   # python-runner:
   #   build:
   #     context: ./python_runner

@@ -5,6 +5,8 @@ import json
 import ast
 from io import BytesIO
 
+from stream_process.kafka.kafka_scripts.kafka_consumer import create_kafka_consumer
+
 def store_data_in_hdfs(transaction_data):
     # Extract the necessary fields from the JSON
     data = {
@@ -23,8 +25,8 @@ def store_data_in_hdfs(transaction_data):
 
     # Connect to HDFS
     hdfs_host = 'localhost'
-    hdfs_port = 50070
-    client = InsecureClient(f'http://{hdfs_host}:{hdfs_port}', user='nhtrung')
+    hdfs_port = 50075
+    client = InsecureClient(f'http://{hdfs_host}:{hdfs_port}', user='hadoop')
 
     # Ensure the directory exists
     try:
@@ -69,16 +71,25 @@ def store_data_in_hdfs(transaction_data):
         print(f"Error saving data to HDFS: {e}")
 
 def consume_hdfs():
+    # # Configure Kafka
+    # bootstrap_servers = 'localhost:9093'
+    # topic = 'CLV_system_nhtrung'
+
+    # # Create Kafka consumer
+    # consumer = KafkaConsumer(
+    #     topic,
+    #     group_id='my_consumer_group',
+    #     auto_offset_reset='latest',
+    #     bootstrap_servers=bootstrap_servers,
+    #     value_deserializer=lambda x: x.decode('utf-8'))
+
     # Configure Kafka
-    bootstrap_servers = 'localhost:9092'
+    bootstrap_servers = 'localhost:9093'
     topic = 'CLV_system_nhtrung'
+    group_id = 'my_consumer_group'
 
     # Create Kafka consumer
-    consumer = KafkaConsumer(topic,
-                             group_id='my_consumer_group',
-                             auto_offset_reset='latest',
-                             bootstrap_servers=bootstrap_servers,
-                             value_deserializer=lambda x: x.decode('utf-8'))
+    consumer = create_kafka_consumer(bootstrap_servers, topic, group_id)
 
     # Loop through the received messages from Kafka
     for message in consumer:

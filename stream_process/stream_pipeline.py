@@ -36,31 +36,31 @@ def consumer_thread(spark):
 
 if __name__ == "__main__":
     # Create SparkSession ONCE before threads start
-    try:
+    # try:
 
-        hbase_connector_jar = "/hbase/jar/spark-hbase-connector_2.10-1.0.3.jar"
-        hbase_shaded_jar = "/hbase/jar/hbase-spark-protocol-shaded-1.1.0-SNAPSHOT.jar"
+    hbase_connector_jar = "/hbase/jar/spark-hbase-connector_2.10-1.0.3.jar"
+    hbase_shaded_jar = "/hbase/jar/hbase-spark-protocol-shaded-1.1.0-SNAPSHOT.jar"
 
 
-        spark = SparkSession.builder \
-        .appName("CLV Prediction") \
-        .master("spark://172.27.254.108:7077") \
-        .config("spark.sql.execution.arrow.pyspark.enabled", "true") \
-        \
-         .config("spark.jars.packages", 
-            "org.apache.spark:spark-sql-kafka-0-10_2.12:3.1.2") \
-        .config("hbase.zookeeper.quorum", "localhost:2181") \
-        .config("zookeeper.znode.parent", "/hbase") \
-        .config("spark.driver.host", "172.27.254.108")\
-        .config("spark.executor.heartbeatInterval", "60s")  \
-        .config("spark.network.timeout", "120s")  \
-        .config("spark.executor.memory", "2g") \
-        .config("spark.driver.memory", "2g") \
-        .config("spark.cores.max", "4")  \
-        .config("spark.sql.shuffle.partitions", "100") \
-        .getOrCreate()
-    except Exception as e:
-        logger.exception(f"Error in consumer_thread: {e}")
+    spark = SparkSession.builder \
+    .appName("CLV Prediction") \
+    .master("spark://172.27.179.20:7077") \
+    .config("spark.sql.execution.arrow.pyspark.enabled", "true") \
+    \
+        .config("spark.jars.packages", 
+        "org.apache.spark:spark-sql-kafka-0-10_2.12:3.1.2") \
+    .config("hbase.zookeeper.quorum", "localhost:2181") \
+    .config("zookeeper.znode.parent", "/hbase") \
+    .config("spark.driver.host", "172.27.179.20")\
+    .config("spark.executor.heartbeatInterval", "60s")  \
+    .config("spark.network.timeout", "120s")  \
+    .config("spark.executor.memory", "2g") \
+    .config("spark.driver.memory", "2g") \
+    .config("spark.cores.max", "4")  \
+    .config("spark.sql.shuffle.partitions", "100") \
+    .getOrCreate()
+    # except Exception as e:
+    #     logger.exception(f"Error in consumer_thread: {e}")
 
 
     producer = threading.Thread(target=producer_thread)

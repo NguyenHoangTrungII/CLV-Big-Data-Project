@@ -4,7 +4,7 @@
   <!-- Default filesystem for Hadoop -->
   <property>
     <name>fs.defaultFS</name>
-    <value>hdfs://${HADOOP_NAMENODE_HOST}:${HADOOP_NAMENODE_PORT}</value>
+    <value>hdfs://namenode:9000</value>
   </property>
 
   <!-- Set the NameNode URI -->

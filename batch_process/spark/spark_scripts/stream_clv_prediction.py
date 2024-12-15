@@ -6,18 +6,52 @@ from tensorflow import keras
 import numpy as np
 import pandas as pd
 import threading
-from stream_process.hbase.hbase_scripts.hbase_consumer import insert_data_to_hbase, connect_to_hbase
-
-from batch_process.spark.spark_scripts.spark_processing import process_streaming_features,clean_and_transform_data, write_to_hbase
 from pyspark.sql.functions import lit
+from happybase import ConnectionPool
+
+from stream_process.hbase.hbase_scripts.hbase_consumer import insert_data_to_hbase, connect_to_hbase
+from batch_process.spark.spark_scripts.spark_processing import process_streaming_features,clean_and_transform_data, write_to_hbase
+
 
 # Initialize logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
+# Centralized HBase connection configuration
+HBASE_CONFIG = {
+    'host': 'localhost',  # Replace with actual HBase host
+    'port': 9090,  # Default Thrift port, adjust if different
+    'timeout': 10000  # Increased timeout in milliseconds
+}
+HBASE_POOL_SIZE = 5
+
+# Create connection pool with more robust configuration
+try:
+    connection_pool = ConnectionPool(
+        size=HBASE_POOL_SIZE, 
+        host=HBASE_CONFIG['host'], 
+        port=HBASE_CONFIG['port'], 
+        timeout=HBASE_CONFIG['timeout']
+    )
+    logger.info(f"Successfully created connection pool with size {HBASE_POOL_SIZE}")
+except Exception as pool_err:
+    logger.error(f"Failed to create connection pool: {pool_err}")
+
+
+
 # Kafka configuration
 KAFKA_TOPIC = 'CLV_system_nhtrung'
-KAFKA_BOOTSTRAP_SERVERS = '172.27.254.108:9093'
+KAFKA_BOOTSTRAP_SERVERS = '172.27.179.20:9093'
+
+# Load the model ONCE (outside any threads)
+model = None
+try:
+    model = keras.models.load_model('/home/nhtrung/CLV-Big-Data-Project/stream_process/model/CLV_V3.keras', compile=False)
+    logger.info("Model loaded successfully.")
+except Exception as e:
+    logger.error(f"Error loading model: {e}")
+    exit(1)
 
 # Schema for incoming Kafka data
 schema = StructType([
@@ -30,15 +64,6 @@ schema = StructType([
     StructField("CustomerID", FloatType(), True),
     StructField("Country", StringType(), True)
 ])
-
-# Load the model ONCE (outside any threads)
-model = None
-try:
-    model = keras.models.load_model('/home/nhtrung/CLV-Big-Data-Project/stream_process/model/CLV_V3.keras', compile=False)
-    logger.info("Model loaded successfully.")
-except Exception as e:
-    logger.error(f"Error loading model: {e}")
-    exit(1)
 
 def preprocess_data(df):
     #All preprocessing is done in Spark now
@@ -99,7 +124,6 @@ def process_batch(batch_df, batch_id, predict_udf):
         print(f"Batch {batch_id} is empty!")
         return
 
-    
     # Xử lý batch
     try:
         # processed_df_before =[]
@@ -153,29 +177,6 @@ def process_batch(batch_df, batch_id, predict_udf):
     except Exception as e:
         logger.error(f"Error during model prediction: {e}")
 
-
-from happybase import ConnectionPool
-
-# Centralized HBase connection configuration
-HBASE_CONFIG = {
-    'host': 'localhost',  # Replace with actual HBase host
-    'port': 9090,  # Default Thrift port, adjust if different
-    'timeout': 10000  # Increased timeout in milliseconds
-}
-
-HBASE_POOL_SIZE = 5
-
-# Create connection pool with more robust configuration
-try:
-    connection_pool = ConnectionPool(
-        size=HBASE_POOL_SIZE, 
-        host=HBASE_CONFIG['host'], 
-        port=HBASE_CONFIG['port'], 
-        timeout=HBASE_CONFIG['timeout']
-    )
-except Exception as pool_err:
-    logger.error(f"Failed to create connection pool: {pool_err}")
-
 def connect_and_save_to_hbase(df_with_predictions):
     print("Starting to consume...") 
     try:
@@ -185,7 +186,6 @@ def connect_and_save_to_hbase(df_with_predictions):
         print("Success insert into HBase")
     except Exception as e:
         print(f"Error during HBase operation: {e}")
-
 
 def consume_and_preprocess(spark, predict_udf_func):
     try:
@@ -198,15 +198,7 @@ def consume_and_preprocess(spark, predict_udf_func):
         kafka_df = kafka_df.selectExpr("CAST(value AS STRING)")
         parsed_df = kafka_df.withColumn("data", from_json(col("value"), schema)).select("data.*")
         parsed_df = parsed_df.dropna()
-        # print(parsed_df)
-
-        # Connect to HBase
-        # try:
-        #     connection = connect_to_hbase()
-        # except Exception as e:
-        #     print("Fail to connect", e)
-        
-         
+      
         query = parsed_df \
             .writeStream \
             .foreachBatch(lambda batch_df, batch_id: process_batch(batch_df, batch_id, predict_udf_func)) \

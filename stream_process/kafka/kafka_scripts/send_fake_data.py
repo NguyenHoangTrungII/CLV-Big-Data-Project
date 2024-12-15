@@ -28,10 +28,10 @@ def prepare_message(row):
     return row.to_dict()
 
 
-# # Thiết lập Kafka producer
+# Thiết lập Kafka producer
 producer = KafkaProducer(
     # bootstrap_servers='localhost:9093',
-    bootstrap_servers='localhost:9093',  
+    bootstrap_servers='172.27.179.20:9093',  
     value_serializer=lambda v: json.dumps(serialize_data(v)).encode('utf-8')
 )
 

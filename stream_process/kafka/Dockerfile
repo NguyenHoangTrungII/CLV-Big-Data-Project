@@ -11,7 +11,7 @@ RUN wget https://archive.apache.org/dist/kafka/${KAFKA_VERSION}/kafka_${SCALA_VE
     && mv kafka_${SCALA_VERSION}-${KAFKA_VERSION} /usr/local/kafka
 
 # Sao chép file cấu hình Kafka
-COPY ./kafka_config/server.properties /usr/local/kafka/config/server.properties
+# COPY ./kafka_config/server.properties /usr/local/kafka/config/server.properties
 
 # Thiết lập các biến môi trường
 ENV KAFKA_HOME=/usr/local/kafka
