@@ -74,6 +74,8 @@ export class DashboardComponent implements OnInit {
     this.users.sort((a, b) => b.clv - a.clv);
     const topUsers = this.users.slice(0, 10);
 
+    console.log('top user', topUsers)
+
     // Cập nhật dữ liệu biểu đồ
     this.chartData = {
       labels: topUsers.map(user => user.name),  // Các tên người dùng

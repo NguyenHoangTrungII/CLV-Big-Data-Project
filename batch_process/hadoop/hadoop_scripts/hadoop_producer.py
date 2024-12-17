@@ -5,7 +5,7 @@ from io import BytesIO
 def read_data_from_hdfs():
     hdfs_host = 'localhost'
     hdfs_port = 50070
-    hdfs_user = 'nhtrung'
+    hdfs_user = 'hadoop'
     file_path = '/batch-layer/raw_data.csv'
 
     client = InsecureClient(f'http://{hdfs_host}:{hdfs_port}', user=hdfs_user)

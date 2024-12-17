@@ -82,12 +82,7 @@ services:
       - zookeeper3
     env_file:
       - ./stream_process/hbase_distribute/hbase-distributed-local.env
-    # healthcheck:
-    #   test: ["CMD", "curl", "-f", "http://localhost:16010"]
-    #   interval: 30s
-    #   timeout: 10s
-    #   retries: 5
-    command: /bin/sh -c "/usr/local/hbase/bin/hbase master start && tail -f /dev/null"
+    command: /bin/sh -c "/usr/local/hbase/bin/hbase master start && /usr/local/hbase/bin/hbase-daemon.sh start thrift && tail -f /dev/null"
     networks:
       - hbase-network
 
@@ -111,36 +106,9 @@ services:
       - hbase-master
     env_file:
       - ./stream_process/hbase_distribute/hbase-distributed-local.env
-    # healthcheck:
-    #   test: ["CMD", "curl", "-f", "http://localhost:16030"]
-    #   interval: 30s
-    #   timeout: 10s
-    #   retries: 5
-    command: /bin/sh -c "/usr/local/hbase/bin/hbase regionserver start && tail -f /dev/null"
+    command: /bin/sh -c "/usr/local/hbase/bin/hbase regionserver start && /usr/local/hbase/bin/hbase-daemon.sh start thrift && tail -f /dev/null"
     networks:
       - hbase-network
-
-  # hbase:
-  #   # image: bde2020/hbase-standalone:1.0.0-hbase1.2.6
-  #   build:
-  #     context: ./stream_process/hbase
-  #   container_name: hbase
-  #   volumes:
-  #     - hbase_data:/hbase-data
-  #     - hbase_zookeeper_data:/zookeeper-data
-  #   ports:
-  #     - 16000:16000
-  #     - 16010:16010
-  #     - 16020:16020
-  #     - 16030:16030
-  #     - 2888:2888
-  #     - 3888:3888
-  #     - 2188:2181
-  #   environment:
-  #     SERVICE_PRECONDITION: "namenode:50070 datanode:50075"
-  #   env_file:
-  #     - ./stream_process/hbase/hbase-standalone.env
-  #   command: /bin/sh -c "/usr/local/hbase/bin/start-hbase.sh && tail -f /dev/null"
 
   kafka:
     build:
@@ -160,99 +128,48 @@ services:
     networks:
       - hbase-network
 
-  # hbase:
-  #   build:
-  #     context: ./stream_process/hbase
-  #   container_name: hbase
-  #   # ports:
-  #   #   - "16010:16010"
-  #   #   - "2182:2181"
-  #   #   - "9090:9090"
-  #   # depends_on:
-  #   #   - zookeeper
-  #   ports:
-  #     - "16010:16010"   # UI port for HBase Master
-  #     - "16000:16000"   # Master port for HBase communication
-  #     - "16020:16020"   # RegionServer port
-  #     - "2182:2181"     # Zookeeper port (if applicable)
-  #     - "9090:9090"     # Custom port for monitoring or others
-  #   depends_on:
-  #     - zookeeper
-  #   environment:
-  #     - HBASE_MASTER=hbase:16000
-  #     - HBASE_REGIONSERVER=hbase:16020
-  #   command: /bin/sh -c "/usr/local/hbase/bin/start-hbase.sh && tail -f /dev/null"
-  
-  # hbase-master:
-  #   build:
-  #     context: ./stream_process/hbase
-  #   container_name: hbase-master
-  #   ports:
-  #     - "16010:16010"    # UI port for HBase Master
-  #     - "16000:16000"    # Master port for HBase communication
-  #   environment:
-  #     - HBASE_MASTER=hbase-master:16000
-  #     - HBASE_REGIONSERVER=hbase-regionserver:16020
-  #     - HBASE_ZOOKEEPER_QUORUM=zookeeper1,zookeeper2
-  #   depends_on:
-  #     - zookeeper1
-  #     - zookeeper2
-  #   command: /bin/sh -c "/usr/local/hbase/bin/start-hbase.sh master && tail -f /dev/null"
-  
-  # hbase-regionserver:
-  #   build:
-  #     context: ./stream_process/hbase
-  #   container_name: hbase-regionserver
-  #   ports:
-  #     - "16020:16020"    # RegionServer port
-  #   environment:
-  #     - HBASE_MASTER=hbase-master:16000
-  #     - HBASE_ZOOKEEPER_QUORUM=zookeeper1,zookeeper2
-  #   depends_on:
-  #     - hbase-master
-  #   command: /bin/sh -c "/usr/local/hbase/bin/start-hbase.sh regionserver && tail -f /dev/null"
-  
-  # hadoop:
-  #   build:
-  #     # context: ./batch_process/hadoop
-  #     context: ./ # Đảm bảo rằng context trỏ đến thư mục gốc của dự án
-  #     dockerfile: batch_process/hadoop/Dockerfile
-  #   container_name: hadoop
-  #   ports:
-  #     - "50070:50070"
-  #     - "8088:8088"
-
   namenode:
+    # image: gelog/hadoop
     build:
-      context: ./
-      dockerfile: batch_process/hadoop/Dockerfile
+      context: ./batch_process/hadoop
+      dockerfile: Dockerfile
     container_name: namenode
-    ports:
-      - "50070:50070"   
-      - "9000:9000"     
-    volumes:
-      - hadoop_namenode_data:/usr/local/hadoop/data/name
-    command: ["bash", "-c", "service ssh start && /usr/local/hadoop/sbin/hadoop-daemon.sh start namenode && tail -f /dev/null"]    
-    networks:
-      - hbase-network
-    
-  datanode:
-    build:
-      context: ./
-      dockerfile: batch_process/hadoop/Dockerfile
-    container_name: datanode
-    ports:
-      - 50010:50010
-    depends_on:
-      - namenode
-    # environment:
-    #   SERVICE_PRECONDITION: "namenode:50070"
-    volumes:
-      - hadoop_datanode_data:/usr/local/hadoop/data/datanode
-    command: ["bash", "-c", "/usr/local/hadoop/sbin/hadoop-daemon.sh start datanode && tail -f /dev/null"]
+    ports: 
+      - "50070:50070"
+    command: hdfs namenode
+    hostname: hdfs-namenode
     networks:
       - hbase-network
 
+  datanode:
+    # image: gelog/hadoop
+    build:
+      context: ./batch_process/hadoop
+      dockerfile: Dockerfile
+    container_name: datanode
+    command: hdfs datanode
+    ports:
+  # The host port is randomly assigned by Docker, to allow scaling to multiple DataNodes on the same host
+       - "50075:50075"
+    links:
+      - namenode:hdfs-namenode
+    networks:
+      - hbase-network
+
+  secondarynamenode:
+    # image: gelog/hadoop
+    build:
+      context: ./batch_process/hadoop
+      dockerfile: Dockerfile
+    container_name: secondarynamenode
+    command: hdfs secondarynamenode
+    ports:
+      - "50090:50090"
+    links:
+      - namenode:hdfs-namenode
+    networks:
+      - hbase-network
+      
   spark-master:
     # image: clv-big-data-project-spark:latest
     build:
@@ -315,14 +232,17 @@ services:
     environment:
       - AIRFLOW_HOME=/usr/local/airflow
       - AIRFLOW__CORE__DAGS_FOLDER=./orchestration/dags
+      - PYTHONPATH=/usr/local/airflow/batch_process
     volumes:
-      - ./airflow:/usr/local/airflow
+      - airflow_data:/usr/local/airflow
       - ./orchestration:/usr/local/airflow/orchestration
+      - ./batch_process:/usr/local/airflow/batch_process
     depends_on:
       - postgres
     networks:
       - hbase-network
     command: ["airflow", "webserver", "--port", "8080"]
+
   # python-runner:
   #   build:
   #     context: ./python_runner
@@ -345,3 +265,4 @@ volumes:
   hadoop_datanode_data:
   hbase_data:
   hbase_zookeeper_data:
+  airflow_data:

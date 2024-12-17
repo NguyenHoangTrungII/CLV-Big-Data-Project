@@ -1,70 +1,62 @@
-FROM openjdk:8-jdk
+FROM ubuntu:20.04
 
-# Cài đặt các dependencies cần thiết
-RUN apt-get update && apt-get install -y \
-    wget \
-    openssh-server \
-    curl \
-    vim \
-    gettext-base && \
+
+####################
+# JAVA
+####################
+
+ENV JAVA_HOME		/usr/lib/jvm/java-8-openjdk-amd64
+
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y openjdk-8-jdk && \
     rm -rf /var/lib/apt/lists/*
 
-# Tải và cài đặt Hadoop
-RUN wget https://archive.apache.org/dist/hadoop/core/hadoop-2.7.0/hadoop-2.7.0.tar.gz && \
-    tar -xvzf hadoop-2.7.0.tar.gz && \
-    mv hadoop-2.7.0 /usr/local/hadoop && \
-    rm hadoop-2.7.0.tar.gz
-
-# Cấu hình SSH
-RUN mkdir -p /var/run/sshd && \
-    echo 'root:rootpassword' | chpasswd && \
-    echo "PermitRootLogin yes" >> /etc/ssh/sshd_config && \
-    echo "StrictHostKeyChecking no" >> /etc/ssh/ssh_config
-
-# Tạo khóa SSH và thiết lập quyền
-RUN ssh-keygen -t rsa -P '' -f /root/.ssh/id_rsa && \
-    cat /root/.ssh/id_rsa.pub >> /root/.ssh/authorized_keys && \
-    chmod 700 /root/.ssh && chmod 600 /root/.ssh/authorized_keys
-
-# Sao chép các tệp cấu hình Hadoop
-COPY ./batch_process/hadoop/hadoop_config/hdfs-site.xml.template /usr/local/hadoop/etc/hadoop/hdfs-site.xml.template
-COPY ./batch_process/hadoop/hadoop_config/core-site.xml.template /usr/local/hadoop/etc/hadoop/core-site.xml.template
-
-# Đặt các biến môi trường
-ENV JAVA_HOME=/usr/local/openjdk-8
-ENV HADOOP_HOME=/usr/local/hadoop
-ENV PATH=$HADOOP_HOME/bin:$HADOOP_HOME/sbin:$PATH
-ENV DFS_REPLICATION=3
-ENV NAMENODE_DIR="file:///usr/local/hadoop/data/name"
-ENV DATANODE_DIR="file:///usr/local/hadoop/data/datanode"
-ENV HADOOP_NAMENODE_HOST="namenode"
-# ENV HADOOP_NAMENODE_HOST="172.23.217.20"
-ENV HADOOP_NAMENODE_PORT="9000"
-ENV PATH=$JAVA_HOME/bin:$PATH
 
 
-# Thay thế các biến môi trường trong tệp cấu hình Hadoop
-RUN envsubst < /usr/local/hadoop/etc/hadoop/hdfs-site.xml.template > /usr/local/hadoop/etc/hadoop/hdfs-site.xml
-RUN envsubst < /usr/local/hadoop/etc/hadoop/core-site.xml.template > /usr/local/hadoop/etc/hadoop/core-site.xml
-RUN echo "export JAVA_HOME=/usr/local/openjdk-8" >> /usr/local/hadoop/etc/hadoop/hadoop-env.sh
+####################
+# HADOOP
+####################
 
-# Tạo thư mục dữ liệu và logs cho Hadoop
-RUN mkdir -p /usr/local/hadoop/logs && \
-    mkdir -p /usr/local/hadoop/data/name && \
-    mkdir -p /usr/local/hadoop/data/datanode && \
-    chown -R root:root /usr/local/hadoop
+ENV HADOOP_VERSION	2.7.0
+ENV HADOOP_HOME		/usr/local/hadoop
+ENV HADOOP_OPTS		-Djava.library.path=/usr/local/hadoop/lib/native
+ENV PATH		$PATH:$HADOOP_HOME/bin:$HADOOP_HOME/sbin
 
-# Format NameNode (nếu chưa format trước đó)
-# RUN $HADOOP_HOME/bin/hdfs namenode -format
+# RUN apt-get update && \
+#     DEBIAN_FRONTEND=noninteractive apt-get install -y wget libzip2 libsnappy1 libssl-dev && \
+#     wget http://archive.apache.org/dist/hadoop/core/hadoop-$HADOOP_VERSION/hadoop-$HADOOP_VERSION.tar.gz && \
+#     apt-get remove -y wget && \
+#     rm -rf /var/lib/apt/lists/* && \
+#     tar -zxf /hadoop-$HADOOP_VERSION.tar.gz && \
+#     rm /hadoop-$HADOOP_VERSION.tar.gz && \
+#     mv hadoop-$HADOOP_VERSION /usr/local/hadoop && \
+#     mkdir -p /usr/local/hadoop/logs
 
-#Sao chép file HBase Coprocessor jar vào container
-COPY ./stream_process/hbase/hbase_config/hbase-coprocessor-example.jar /tmp/hbase-coprocessor-example.jar
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y wget libbz2-dev libsnappy-dev libssl-dev && \
+    wget http://archive.apache.org/dist/hadoop/core/hadoop-$HADOOP_VERSION/hadoop-$HADOOP_VERSION.tar.gz && \
+    apt-get remove -y wget && \
+    rm -rf /var/lib/apt/lists/* && \
+    tar -zxf hadoop-$HADOOP_VERSION.tar.gz && \
+    rm hadoop-$HADOOP_VERSION.tar.gz && \
+    mv hadoop-$HADOOP_VERSION /usr/local/hadoop && \
+    mkdir -p /usr/local/hadoop/logs
 
-COPY ./batch_process/hadoop/hadoop_config/init-hbase.sh /init-hbase.sh
-RUN chmod +x /init-hbase.sh
 
-# Thêm cấu hình HADOOP_NAMENODE_OPTS vào hadoop-env.sh
-RUN echo "export HADOOP_NAMENODE_OPTS=\"-Djava.net.preferIPv4Stack=true -Dfs.defaultFS=hdfs://namenode:9000\"" >> /usr/local/hadoop/etc/hadoop/hadoop-env.sh
 
-# Mở các cổng cần thiết
-EXPOSE 22 50070 8088 9000
+# Overwrite default HADOOP configuration files with our config files
+COPY hadoop_config  $HADOOP_HOME/etc/hadoop/
+
+# Formatting HDFS
+RUN mkdir -p /data/dfs/data /data/dfs/name /data/dfs/namesecondary && \
+    hdfs namenode -format
+VOLUME /data
+
+# Helper script for starting YARN
+ADD start-yarn.sh /usr/local/bin/start-yarn.sh
+
+EXPOSE 9000 50070 50010 50020 50075 50090
+
+
+
+CMD ["hdfs"]

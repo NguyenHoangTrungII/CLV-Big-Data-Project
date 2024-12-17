@@ -1,0 +1,182 @@
+.
+├── airflow  [error opening dir]
+├── batch_process
+│   ├── airflow
+│   │   ├── airflow_config
+│   │   │   └── airflow.cfg
+│   │   └── Dockerfile
+│   ├── batch_pipeline.py
+│   ├── batch_processing.py
+│   ├── DAG.py
+│   ├── hadoop
+│   │   ├── Dockerfile
+│   │   ├── hadoop_config
+│   │   │   ├── core-site.xml
+│   │   │   ├── hdfs-site.xml
+│   │   │   ├── mapred-site.xml
+│   │   │   └── yarn-site.xml
+│   │   ├── hadoop_scripts
+│   │   │   ├── hadoop_consumer.py
+│   │   │   ├── hadoop_producer.py
+│   │   │   ├── __init__.py
+│   │   │   └── __pycache__
+│   │   │       ├── hadoop_consumer.cpython-310.pyc
+│   │   │       └── __init__.cpython-310.pyc
+│   │   └── start-yarn.sh
+│   ├── __init__.py
+│   ├── model
+│   │   ├── CLV_Big_Data_Project.ipynb
+│   │   ├── model_evaluation.py
+│   │   ├── model_training.py
+│   │   ├── model_update.py
+│   │   └── __pycache__
+│   │       └── model_update.cpython-310.pyc
+│   ├── postgres
+│   │   ├── Dockerfile
+│   │   ├── postgres_config
+│   │   │   ├── config.py
+│   │   │   ├── _init_.py
+│   │   │   ├── init.sql
+│   │   │   └── __pycache__
+│   │   │       └── config.cpython-310.pyc
+│   │   ├── __pycache__
+│   │   │   └── save_preprocessed_data.cpython-310.pyc
+│   │   └── save_preprocessed_data.py
+│   ├── __pycache__
+│   │   ├── batch_pipeline.cpython-310.pyc
+│   │   ├── batch_processing.cpython-310.pyc
+│   │   └── __init__.cpython-310.pyc
+│   └── spark
+│       ├── Dockerfile
+│       ├── master.sh
+│       ├── spark_config
+│       │   ├── spark-defaults.conf
+│       │   └── spark-env.sh
+│       ├── spark_scripts
+│       │   ├── __init__.py
+│       │   ├── __pycache__
+│       │   │   ├── __init__.cpython-310.pyc
+│       │   │   ├── spark_processing.cpython-310.pyc
+│       │   │   └── stream_clv_prediction.cpython-310.pyc
+│       │   ├── realtime_model_processing.py
+│       │   ├── spark_processing.py
+│       │   └── stream_clv_prediction.py
+│       └── worker.sh
+├── bigdata-scripts
+│   ├── install_all.sh
+│   ├── start_services.sh
+│   └── stop_services.sh
+├── data
+│   └── raw
+│       └── Online_Retail.xlsx
+├── data_pipeline.py
+├── docker-compose.yml
+├── document
+│   └── Big_Data_Installation_Guide_Ubuntu.txt
+├── get-pip.py
+├── model
+├── orchestration
+│   ├── airflow.cfg
+│   └── dags
+│       ├── __init__.py
+│       ├── lamda_pipeline.py
+│       ├── __pycache__  [error opening dir]
+│       └── sync_with_batch.py
+├── project_structire.txt
+├── project_structure.txt
+├── python_runner
+│   ├── Dockerfile
+│   ├── requirements.txt
+│   └── run.sh
+├── README.md
+├── requirements.txt
+├── stream_process
+│   ├── hbase
+│   │   ├── Dockerfile
+│   │   ├── hbase_config
+│   │   │   ├── core-site.xml
+│   │   │   ├── create_table.sh
+│   │   │   ├── hbase-coprocessor-example.jar
+│   │   │   ├── hbase-site.xml
+│   │   │   ├── init-habse.sh
+│   │   │   └── regionserver-env.sh
+│   │   ├── hbase_coprocessors
+│   │   │   ├── hbase-coprocessor-example-1.0.0-SNAPSHOT.jar
+│   │   │   ├── hbase-coprocessor-example-v1.jar
+│   │   │   ├── hbase-coprocessor-example-v2.jar
+│   │   │   └── hbase-coprocessor-example-v3.jar
+│   │   ├── hbase_scripts
+│   │   │   ├── hbase_consumer.py
+│   │   │   ├── __init__.py
+│   │   │   └── __pycache__
+│   │   │       ├── hbase_consumer.cpython-310.pyc
+│   │   │       └── __init__.cpython-310.pyc
+│   │   ├── hbase-standalone.env
+│   │   └── jar
+│   │       ├── hbase-spark-it-1.1.0-SNAPSHOT.jar
+│   │       ├── hbase-spark-protocol-shaded-1.1.0-SNAPSHOT.jar
+│   │       ├── shc-examples-1.1.3-2.4-s_2.11.jar
+│   │       └── spark-hbase-connector_2.10-1.0.3.jar
+│   ├── hbase_distribute
+│   │   ├── hbase_coprocessors
+│   │   │   └── hbase-coprocessor-example.jar
+│   │   ├── hbase-distributed-local.env
+│   │   ├── hbase_master
+│   │   │   ├── Dockerfile
+│   │   │   └── hbase_config
+│   │   │       ├── core-site.xml
+│   │   │       ├── create_table.sh
+│   │   │       ├── hbase-coprocessor-example.jar
+│   │   │       ├── hbase-site.xml
+│   │   │       └── regionserver-env.sh
+│   │   └── hbase_regionserver
+│   │       ├── Dockerfile
+│   │       └── hbase_config
+│   │           ├── core-site.xml
+│   │           ├── create_table.sh
+│   │           ├── hbase-coprocessor-example.jar
+│   │           ├── hbase-site.xml
+│   │           └── regionserver-env.sh
+│   ├── __init__.py
+│   ├── kafka
+│   │   ├── Dockerfile
+│   │   ├── kafka_config
+│   │   │   ├── kafka_config.py
+│   │   │   ├── producer_config.json
+│   │   │   └── server.properties
+│   │   ├── kafka_scripts
+│   │   │   ├── consume_data.py
+│   │   │   ├── kafka_consumer.py
+│   │   │   ├── kafka_producer.py
+│   │   │   ├── __pycache__
+│   │   │   │   ├── kafka_consumer.cpython-310.pyc
+│   │   │   │   └── send_fake_data.cpython-310.pyc
+│   │   │   └── send_fake_data.py
+│   │   └── server.properties  [error opening dir]
+│   ├── model
+│   │   ├── CLV.h5
+│   │   ├── CLV_V2.keras
+│   │   ├── CLV_V3.keras
+│   │   ├── CLV_V4.keras
+│   │   ├── CLV_V5.keras
+│   │   ├── CLV_V6.keras
+│   │   ├── CLV_V7.keras
+│   │   ├── CLV_V8.keras
+│   │   ├── model_update.py
+│   │   └── real_time_prediction.py
+│   ├── __pycache__
+│   │   ├── __init__.cpython-310.pyc
+│   │   ├── stream_pipeline.cpython-310.pyc
+│   │   ├── test_client.cpython-310.pyc
+│   │   ├── test.cpython-310.pyc
+│   │   └── test.cpython-312.pyc
+│   ├── stream_pipeline.py
+│   ├── test_client.py
+│   └── test.py
+└── utils
+    ├── config.py
+    ├── data_preprocessing.py
+    ├── helpers.py
+    └── logger.py
+
+50 directories, 130 files

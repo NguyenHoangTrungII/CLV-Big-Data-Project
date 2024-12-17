@@ -1,6 +1,6 @@
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, regexp_replace, to_timestamp, hour, dayofweek, when, unix_timestamp
-from pyspark.sql.types import BooleanType,IntegerType, FloatType
+from pyspark.sql.functions import from_json, explode, col, regexp_replace, to_timestamp, hour, dayofweek, when, unix_timestamp
+from pyspark.sql.types import StructType, StructField, StringType, ArrayType, IntegerType, DoubleType, BooleanType,IntegerType, FloatType
 from pyspark.sql import functions as F
 from datetime import datetime
 
@@ -59,6 +59,55 @@ def clean_and_transform_data(df):
         .withColumn("InvoiceDate", unix_timestamp(col("InvoiceDate")).cast("double"))
 
     return df
+
+def transform_kafka_data_to_dataframe(kafka_data):
+    """
+    Transforms nested Kafka JSON data into a flattened Spark DataFrame.
+
+    Args:
+        kafka_data (DataFrame): Spark DataFrame containing Kafka JSON data.
+
+    Returns:
+        DataFrame: Flattened Spark DataFrame with rows per item.
+    """
+    # Define schema for Kafka JSON data
+    item_schema = StructType([
+        StructField("StockCode", StringType(), True),
+        StructField("Description", StringType(), True),
+        StructField("Quantity", IntegerType(), True),
+        StructField("UnitPrice", DoubleType(), True)
+    ])
+
+    main_schema = StructType([
+        StructField("InvoiceNo", StringType(), True),
+        StructField("InvoiceDate", StringType(), True),
+        StructField("CustomerID", StringType(), True),
+        StructField("Country", StringType(), True),
+        StructField("Items", ArrayType(item_schema), True)
+    ])
+
+    # Parse JSON and flatten the structure
+    json_df = kafka_data.selectExpr("CAST(value AS STRING) as message") \
+        .select(from_json(col("message"), main_schema).alias("data"))
+
+    flattened_df = json_df.select(
+        col("data.InvoiceNo"),
+        col("data.InvoiceDate"),
+        col("data.CustomerID"),
+        col("data.Country"),
+        explode(col("data.Items")).alias("Item")
+    ).select(
+        col("InvoiceNo"),
+        col("InvoiceDate"),
+        col("CustomerID"),
+        col("Country"),
+        col("Item.StockCode").alias("StockCode"),
+        col("Item.Description").alias("Description"),
+        col("Item.Quantity").alias("Quantity"),
+        col("Item.UnitPrice").alias("UnitPrice")
+    )
+
+    return flattened_df
 
 def convert_to_date(date_str):
     try:

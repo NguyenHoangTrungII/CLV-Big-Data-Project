@@ -90,14 +90,56 @@
 #     main()
 
 
-from hdfs import InsecureClient
+# from hdfs import InsecureClient
 
-hdfs_host = 'localhost'
-hdfs_port = 50070
-client = InsecureClient(f'http://{hdfs_host}:{hdfs_port}', user='hadoop')
+# hdfs_host = 'localhost'
+# hdfs_port = 50070
+# client = InsecureClient(f'http://{hdfs_host}:{hdfs_port}', user='hadoop')
 
-try:
-    status = client.status('/')
-    print("HDFS Root Directory Status:", status)
-except Exception as e:
-    print("Error connecting to HDFS:", e)
+# try:
+#     status = client.status('/')
+#     print("HDFS Root Directory Status:", status)
+# except Exception as e:
+#     print("Error connecting to HDFS:", e)
+
+
+import pandas as pd
+
+# Dữ liệu từ Kafka
+message = {
+    'InvoiceNo': '536390',
+    'InvoiceDate': '2010-12-01 10:19:00',
+    'CustomerID': '17511.0',
+    'Country': 'United Kingdom',
+    'Items': [
+        {'StockCode': '22941', 'Description': 'CHRISTMAS LIGHTS 10 REINDEER', 'Quantity': 2, 'UnitPrice': 8.5},
+        {'StockCode': '22960', 'Description': 'JAM MAKING SET WITH JARS', 'Quantity': 12, 'UnitPrice': 3.75},
+        {'StockCode': '22961', 'Description': 'JAM MAKING SET PRINTED', 'Quantity': 12, 'UnitPrice': 1.45},
+        # Thêm các mục khác nếu cần...
+    ]
+}
+
+# Chuyển đổi từng mục hàng hóa thành DataFrame với thông tin hóa đơn
+data_rows = []
+for item in message['Items']:
+    row = {
+        'InvoiceNo': message['InvoiceNo'],
+        'InvoiceDate': message['InvoiceDate'],
+        'CustomerID': message['CustomerID'],
+        'Country': message['Country'],
+        'StockCode': item['StockCode'],
+        'Description': item['Description'],
+        'Quantity': item['Quantity'],
+        'UnitPrice': item['UnitPrice']
+    }
+    data_rows.append(row)
+
+# Tạo DataFrame từ danh sách hàng hóa
+df = pd.DataFrame(data_rows)
+
+# Chuyển đổi kiểu dữ liệu nếu cần (chẳng hạn, InvoiceDate về datetime)
+df['InvoiceDate'] = pd.to_datetime(df['InvoiceDate'])
+
+# Hiển thị DataFrame kết quả
+print(df)
+

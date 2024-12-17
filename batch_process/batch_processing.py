@@ -1,6 +1,10 @@
 # batch_layer.py
-from batch_process.spark.spark_scripts.spark_processing import spark_processing
+import sys
 
+sys.path.append('/usr/local/airflow')
+
+
+from batch_process.spark.spark_scripts.spark_processing import spark_processing
 
 def batch_layer():
     try:

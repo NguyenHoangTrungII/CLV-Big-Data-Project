@@ -10,7 +10,7 @@ from pyspark.sql.functions import lit
 from happybase import ConnectionPool
 
 from stream_process.hbase.hbase_scripts.hbase_consumer import insert_data_to_hbase, connect_to_hbase
-from batch_process.spark.spark_scripts.spark_processing import process_streaming_features,clean_and_transform_data, write_to_hbase
+from batch_process.spark.spark_scripts.spark_processing import process_streaming_features,clean_and_transform_data, write_to_hbase, transform_kafka_data_to_dataframe
 
 
 # Initialize logging
@@ -123,6 +123,8 @@ def process_batch(batch_df, batch_id, predict_udf):
     if batch_df.isEmpty():
         print(f"Batch {batch_id} is empty!")
         return
+        
+    batch_df = transform_kafka_data_to_dataframe(batch_df)
 
     # Xử lý batch
     try:

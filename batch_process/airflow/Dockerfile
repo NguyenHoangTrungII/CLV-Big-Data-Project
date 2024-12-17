@@ -21,6 +21,8 @@ WORKDIR $AIRFLOW_HOME
 # Cài đặt Apache Airflow với các ràng buộc
 RUN pip install "apache-airflow[postgres,celery]==${AIRFLOW_VERSION}" --constraint ${CONSTRAINT_URL}
 
+RUN pip install pandas kafka-python tensorflow happybase hdfs pyspark numpy
+
 # Sao chép tệp cấu hình Airflow (nếu có)
 COPY ./airflow_config/airflow.cfg $AIRFLOW_HOME/airflow.cfg
 

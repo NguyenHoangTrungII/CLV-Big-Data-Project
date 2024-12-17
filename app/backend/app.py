@@ -8,7 +8,7 @@ app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 # Cấu hình Kafka Consumer
-KAFKA_BROKER = '172.27.254.108:9093'  # Địa chỉ Kafka broker của bạn
+KAFKA_BROKER = 'localhost:9093'  # Địa chỉ Kafka broker của bạn
 KAFKA_TOPIC = 'hbase-clv-topic'  # Tên Kafka topic bạn muốn tiêu thụ
 consumer = KafkaConsumer(
     KAFKA_TOPIC,
