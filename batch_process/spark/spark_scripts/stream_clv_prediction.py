@@ -1,7 +1,7 @@
 import logging
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import regexp_replace, col, from_json, to_timestamp, hour, dayofweek, when, pandas_udf, unix_timestamp
-from pyspark.sql.types import StructType, StructField, StringType, IntegerType, FloatType, TimestampType
+from pyspark.sql.functions import explode, regexp_replace, col, from_json, to_timestamp, hour, dayofweek, when, pandas_udf, unix_timestamp
+from pyspark.sql.types import ArrayType, StructType, StructField, StringType, IntegerType, FloatType, TimestampType
 from tensorflow import keras
 import numpy as np
 import pandas as pd
@@ -10,13 +10,14 @@ from pyspark.sql.functions import lit
 from happybase import ConnectionPool
 
 from stream_process.hbase.hbase_scripts.hbase_consumer import insert_data_to_hbase, connect_to_hbase
-from batch_process.spark.spark_scripts.spark_processing import process_streaming_features,clean_and_transform_data, write_to_hbase, transform_kafka_data_to_dataframe
+from batch_process.spark.spark_scripts.spark_processing import process_streaming_features,clean_and_transform_data, clean_and_transform_data_v2, write_to_hbase, transform_kafka_data_to_dataframe
 
 
 # Initialize logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# global connection_pool; 
 
 # Centralized HBase connection configuration
 HBASE_CONFIG = {
@@ -54,15 +55,28 @@ except Exception as e:
     exit(1)
 
 # Schema for incoming Kafka data
+# schema = StructType([
+#     StructField("InvoiceNo", StringType(), True),
+#     StructField("StockCode", StringType(), True),
+#     StructField("Description", StringType(), True),
+#     StructField("Quantity", IntegerType(), True),
+#     StructField("InvoiceDate", StringType(), True),
+#     StructField("UnitPrice", FloatType(), True),
+#     StructField("CustomerID", FloatType(), True),
+#     StructField("Country", StringType(), True)
+# ])
+
 schema = StructType([
     StructField("InvoiceNo", StringType(), True),
-    StructField("StockCode", StringType(), True),
-    StructField("Description", StringType(), True),
-    StructField("Quantity", IntegerType(), True),
     StructField("InvoiceDate", StringType(), True),
-    StructField("UnitPrice", FloatType(), True),
-    StructField("CustomerID", FloatType(), True),
-    StructField("Country", StringType(), True)
+    StructField("CustomerID", StringType(), True),
+    StructField("Country", StringType(), True),
+    StructField("Items", ArrayType(StructType([
+        StructField("StockCode", StringType(), True),
+        StructField("Description", StringType(), True),
+        StructField("Quantity", IntegerType(), True),
+        StructField("UnitPrice", FloatType(), True),
+    ])), True)
 ])
 
 def preprocess_data(df):
@@ -129,8 +143,9 @@ def process_batch(batch_df, batch_id, predict_udf):
     # Xử lý batch
     try:
         # processed_df_before =[]
-        processed_df_before = clean_and_transform_data(batch_df)
+        processed_df_before = clean_and_transform_data_v2(batch_df)
         processed_df = process_streaming_features(processed_df_before)
+        print("processed_df", processed_df.show())
     except Exception as e:
         logger.error(f"Error during pre-data for prediction: {e}")
 
@@ -138,6 +153,8 @@ def process_batch(batch_df, batch_id, predict_udf):
     try:
         features = processed_df.toPandas()
         # features = processed_df_before.toPandas()
+        print("processed_df", features.head())
+
 
         df_with_predictions = processed_df_before
 
@@ -179,15 +196,15 @@ def process_batch(batch_df, batch_id, predict_udf):
     except Exception as e:
         logger.error(f"Error during model prediction: {e}")
 
-def connect_and_save_to_hbase(df_with_predictions):
-    print("Starting to consume...") 
-    try:
-        # Lấy kết nối từ pool
-        with connection_pool.connection() as connection:
-            insert_data_to_hbase(connection, df_with_predictions)
-        print("Success insert into HBase")
-    except Exception as e:
-        print(f"Error during HBase operation: {e}")
+# def connect_and_save_to_hbase(df_with_predictions):
+#     print("Starting to consume...") 
+#     try:
+#         # Lấy kết nối từ pool
+#         with connection_pool.connection() as connection:
+#             insert_data_to_hbase(connection, df_with_predictions)
+#         print("Success insert into HBase")
+#     except Exception as e:
+#         print(f"Error during HBase operation: {e}")
 
 def consume_and_preprocess(spark, predict_udf_func):
     try:
@@ -197,10 +214,47 @@ def consume_and_preprocess(spark, predict_udf_func):
             .option("startingOffsets", "latest") \
             .load()
         
-        kafka_df = kafka_df.selectExpr("CAST(value AS STRING)")
-        parsed_df = kafka_df.withColumn("data", from_json(col("value"), schema)).select("data.*")
-        parsed_df = parsed_df.dropna()
-      
+        
+        parsed_df = kafka_df.selectExpr("CAST(value AS STRING) AS value") \
+            .withColumn("data", from_json(col("value"), schema)) \
+            .select("data.*")  # Lấy các cột từ schema        
+        
+        # Explode mảng Items thành các dòng riêng biệt
+        exploded_df = parsed_df.withColumn("Item", explode(col("Items"))) \
+            .select(
+                col("InvoiceNo"),
+                col("InvoiceDate"),
+                col("CustomerID"),
+                col("Country"),
+                col("Item.StockCode").alias("StockCode"),
+                col("Item.Description").alias("Description"),
+                col("Item.Quantity").alias("Quantity"),
+                col("Item.UnitPrice").alias("UnitPrice")
+            )
+                
+        # exploded_df.printSchema()
+
+        # parsed_df = kafka_df.withColumn("Item", explode(col("Items"))).select(
+        #     col("InvoiceNo"),
+        #     col("InvoiceDate"),
+        #     col("CustomerID"),
+        #     col("Country"),
+        #     col("Item.StockCode").alias("StockCode"),
+        #     col("Item.Description").alias("Description"),
+        #     col("Item.Quantity").alias("Quantity"),
+        #     col("Item.UnitPrice").alias("UnitPrice")
+        # )
+
+        
+        # parsed_df = parsed_df.dropna()
+
+        # query = parsed_df \
+        # .writeStream \
+        # .outputMode("append") \
+        # .format("console") \
+        # .option("truncate", "false") \
+        # .start()
+
         query = parsed_df \
             .writeStream \
             .foreachBatch(lambda batch_df, batch_id: process_batch(batch_df, batch_id, predict_udf_func)) \

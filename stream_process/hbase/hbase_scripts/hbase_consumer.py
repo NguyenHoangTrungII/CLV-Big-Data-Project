@@ -49,7 +49,7 @@ def insert_data_to_hbase(connection, df, table_name='hbase-clv'):
 
         # Create a unique row key (e.g., using 'InvoiceNo' or a combination of features)
         # row_key = f"{row['InvoiceNo']}-{row['CustomerID']}"
-        row_key = f"{int(row['InvoiceNo'])}-{int(row['CustomerID'])}:"
+        row_key = f"{int(row['InvoiceNo'])}-{int(float(row['CustomerID']))}:"
 
         # Check if 'InvoiceDate' is float (timestamp)
         if isinstance(row['InvoiceDate'], float):

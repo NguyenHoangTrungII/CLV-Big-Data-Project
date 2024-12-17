@@ -136,7 +136,7 @@ def preprocess_data(df):
     df['InvoiceDate'] = df['InvoiceDate'].dt.strftime('%Y-%m-%d %H:%M:%S')
 
     df['Description'] = df['Description'].astype(str)
-    
+
     return df
 
 
@@ -158,7 +158,7 @@ def send_data():
         'UnitPrice': 0.0
     }, inplace=True)
 
-    print("Grouping and formatting data before sending to Kafka...")
+    # print("Grouping and formatting data before sending to Kafka...")
     df = preprocess_data(df)
     grouped_data = group_and_format(df)
     
@@ -172,8 +172,8 @@ def send_data():
     for index, data in enumerate(grouped_data):
         try:
             producer.send('CLV_system_nhtrung', value=data)
-            print(f"Sent message {index}: {data}")
-            time.sleep(1)  # Thêm độ trễ nếu cần
+            # print(f"Sent message {index}: {data}")
+            time.sleep(10)  # Thêm độ trễ nếu cần
         except Exception as e:
             print(f"Error in sending data {index}: {e}")
     

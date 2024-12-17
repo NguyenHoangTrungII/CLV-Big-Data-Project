@@ -60,6 +60,37 @@ def clean_and_transform_data(df):
 
     return df
 
+def clean_and_transform_data_v2(df):
+    """
+    Clean and process the data, excluding rows with duplicate CustomerID.
+    Args:
+        df: Original DataFrame.
+
+    Returns:
+        Processed DataFrame without duplicate CustomerID rows.
+    """
+    # Remove null values
+    df = df.dropna(subset=["InvoiceDate", "Quantity", "UnitPrice"])
+
+    # Clean and configure columns
+    df = df.withColumn("InvoiceDate", regexp_replace(F.col("InvoiceDate"), "[^0-9\-: ]", ""))
+    df = df.withColumn("InvoiceDate", to_timestamp(F.col("InvoiceDate"), "yyyy-MM-dd HH:mm:ss"))
+
+    df = df \
+        .withColumn("Quantity", F.col("Quantity").cast(IntegerType())) \
+        .withColumn("UnitPrice", F.col("UnitPrice").cast(FloatType())) \
+        .withColumn("hour", hour(F.col("InvoiceDate"))) \
+        .withColumn("dayofweek", dayofweek(F.col("InvoiceDate"))) \
+        .withColumn("weekend", when(dayofweek(F.col("InvoiceDate")).isin(6, 7), 1).otherwise(0)) \
+        .withColumn("Revenue", F.col("Quantity") * F.col("UnitPrice")) \
+        .withColumn("InvoiceDate", unix_timestamp(F.col("InvoiceDate")).cast("double"))
+
+    # Remove rows with the same CustomerID, keeping only the first occurrence
+    df = df.dropDuplicates(subset=["CustomerID"])
+
+    return df
+
+
 def transform_kafka_data_to_dataframe(kafka_data):
     """
     Transforms nested Kafka JSON data into a flattened Spark DataFrame.
@@ -87,15 +118,15 @@ def transform_kafka_data_to_dataframe(kafka_data):
     ])
 
     # Parse JSON and flatten the structure
-    json_df = kafka_data.selectExpr("CAST(value AS STRING) as message") \
-        .select(from_json(col("message"), main_schema).alias("data"))
+    # json_df = kafka_data.selectExpr("CAST(value AS STRING) as message") \
+    #     .select(from_json(col("message"), main_schema).alias("data"))
 
-    flattened_df = json_df.select(
-        col("data.InvoiceNo"),
-        col("data.InvoiceDate"),
-        col("data.CustomerID"),
-        col("data.Country"),
-        explode(col("data.Items")).alias("Item")
+    flattened_df = kafka_data.select(
+        col("InvoiceNo"),
+        col("InvoiceDate"),
+        col("CustomerID"),
+        col("Country"),
+        explode(col("Items")).alias("Item")
     ).select(
         col("InvoiceNo"),
         col("InvoiceDate"),
@@ -106,6 +137,8 @@ def transform_kafka_data_to_dataframe(kafka_data):
         col("Item.Quantity").alias("Quantity"),
         col("Item.UnitPrice").alias("UnitPrice")
     )
+
+    print("data in dataframe", flattened_df)
 
     return flattened_df
 
@@ -263,11 +296,104 @@ def get_features_spark_to_pandas(data, feature_percentage=0.8):
 #         "purchase_weekend_prop"
 #     )
 
+# def process_streaming_features(data):
+#     """
+#     Extracts features from a Spark DataFrame in real-time, without splitting into
+#     training and testing datasets. This function processes the streaming data and
+#     returns the features.
+
+#     Parameters:
+#     - data: Spark DataFrame containing the raw streaming dataset.
+
+#     Returns:
+#     - features: Spark DataFrame with extracted features for real-time processing.
+#     """
+
+#     print("process_streaming_features", data.show())
+
+#     # data = data.withColumn("Revenue", F.col("Quantity") * F.col("UnitPrice"))
+
+
+#     # Convert 'InvoiceDate' to date type
+#     # data = data.withColumn("InvoiceDate", F.to_timestamp("InvoiceDate", "yyyy-MM-dd HH:mm:ss"))
+#     data = data.withColumn('InvoiceDate', F.to_date('InvoiceDate', 'yyyy-MM-dd'))
+
+#     # Total revenue
+#     total_rev = data.groupBy('CustomerID').agg(F.sum('Revenue').alias('total_revenue'))
+
+#     # Recency (max - min InvoiceDate)
+#     recency = data.groupBy('CustomerID').agg((F.datediff(F.max('InvoiceDate'), F.min('InvoiceDate'))).alias('recency'))
+#     recency = recency.withColumn('recency', recency['recency'].cast(IntegerType()))
+
+#     # Frequency (number of invoices)
+#     frequency = data.groupBy('CustomerID').agg(F.count('InvoiceNo').alias('frequency'))
+
+#     # Time since first transaction
+#     # t = data.groupBy('CustomerID').agg((F.datediff(F.lit(datetime(2011, 6, 11).date()), F.min('InvoiceDate'))).alias('t'))
+#     # Tạo ngày cố định trong UTC (2011-06-11)
+#     fixed_date = datetime(2011, 6, 11).replace(tzinfo=None)  # Không có múi giờ, mặc định là UTC
+
+#     # Tính toán sự khác biệt giữa ngày trong 'InvoiceDate' và ngày cố định
+#     t = data.groupBy('CustomerID').agg(
+#         (F.datediff(F.lit(fixed_date), F.min('InvoiceDate'))).alias('t')
+#     )
+
+
+#     # Time between purchases
+#     time_between = t.join(frequency, 'CustomerID').withColumn('time_between', (t['t'] / frequency['frequency']))
+
+#     # Average basket value
+#     avg_basket_value = total_rev.join(frequency, 'CustomerID').withColumn(
+#         'avg_basket_value', total_rev['total_revenue'] / frequency['frequency']
+#     )
+
+#     # Average basket size (Quantity per Invoice)
+#     avg_basket_size = data.groupBy('CustomerID').agg((F.sum('Quantity') / F.count('InvoiceNo')).alias('avg_basket_size'))
+
+#     # Returns (negative revenue invoices)
+#     returns = data.filter(data['Revenue'] < 0).groupBy('CustomerID').agg(F.count('InvoiceNo').alias('num_returns'))
+
+#     # Median purchase hour
+#     hour = data.groupBy('CustomerID').agg(F.percentile_approx('hour', 0.5).alias('purchase_hour_med'))
+
+#     # Median purchase day of the week
+#     dow = data.groupBy('CustomerID').agg(F.percentile_approx('dayofweek', 0.5).alias('purchase_dow_med'))
+
+#     # Proportion of purchases made on weekends
+#     weekend = data.groupBy('CustomerID').agg(F.avg('weekend').alias('purchase_weekend_prop'))
+
+#     # Combine all features into one DataFrame, ensuring unique column names
+#     feature_data = total_rev \
+#         .join(recency, 'CustomerID', 'left') \
+#         .join(frequency, 'CustomerID', 'left') \
+#         .join(t, 'CustomerID', 'left') \
+#         .join(time_between.select('CustomerID', 'time_between'), 'CustomerID', 'left') \
+#         .join(avg_basket_value.select('CustomerID', 'avg_basket_value'), 'CustomerID', 'left') \
+#         .join(avg_basket_size, 'CustomerID', 'left') \
+#         .join(returns, 'CustomerID', 'left') \
+#         .join(hour, 'CustomerID', 'left') \
+#         .join(dow, 'CustomerID', 'left') \
+#         .join(weekend, 'CustomerID', 'left')
+
+#     # Handle missing values by filling with 0
+#     feature_data = feature_data.na.fill(0)
+
+#     # Join the target to the feature data (revenue for the target period)
+#     target_rev = data.groupBy('CustomerID').agg(F.sum('Revenue').alias('target_rev'))
+#     final_data = feature_data.join(target_rev, 'CustomerID', 'left').na.fill(0)
+
+#     # Remove 'CustomerID' as it is not a feature for modeling
+#     final_data = final_data.drop('CustomerID', 'target_rev')
+
+
+#     # Return the processed feature data for real-time prediction
+#     return final_data
+
 def process_streaming_features(data):
     """
     Extracts features from a Spark DataFrame in real-time, without splitting into
     training and testing datasets. This function processes the streaming data and
-    returns the features.
+    returns the features, grouped by CustomerID.
 
     Parameters:
     - data: Spark DataFrame containing the raw streaming dataset.
@@ -276,11 +402,7 @@ def process_streaming_features(data):
     - features: Spark DataFrame with extracted features for real-time processing.
     """
 
-    # data = data.withColumn("Revenue", F.col("Quantity") * F.col("UnitPrice"))
-
-
     # Convert 'InvoiceDate' to date type
-    # data = data.withColumn("InvoiceDate", F.to_timestamp("InvoiceDate", "yyyy-MM-dd HH:mm:ss"))
     data = data.withColumn('InvoiceDate', F.to_date('InvoiceDate', 'yyyy-MM-dd'))
 
     # Total revenue
@@ -294,15 +416,10 @@ def process_streaming_features(data):
     frequency = data.groupBy('CustomerID').agg(F.count('InvoiceNo').alias('frequency'))
 
     # Time since first transaction
-    # t = data.groupBy('CustomerID').agg((F.datediff(F.lit(datetime(2011, 6, 11).date()), F.min('InvoiceDate'))).alias('t'))
-    # Tạo ngày cố định trong UTC (2011-06-11)
-    fixed_date = datetime(2011, 6, 11).replace(tzinfo=None)  # Không có múi giờ, mặc định là UTC
-
-    # Tính toán sự khác biệt giữa ngày trong 'InvoiceDate' và ngày cố định
+    fixed_date = datetime(2011, 6, 11).replace(tzinfo=None)
     t = data.groupBy('CustomerID').agg(
         (F.datediff(F.lit(fixed_date), F.min('InvoiceDate'))).alias('t')
     )
-
 
     # Time between purchases
     time_between = t.join(frequency, 'CustomerID').withColumn('time_between', (t['t'] / frequency['frequency']))
@@ -350,9 +467,9 @@ def process_streaming_features(data):
     # Remove 'CustomerID' as it is not a feature for modeling
     final_data = final_data.drop('CustomerID', 'target_rev')
 
-
     # Return the processed feature data for real-time prediction
     return final_data
+
 
 def spark_processing(spark):
     """
