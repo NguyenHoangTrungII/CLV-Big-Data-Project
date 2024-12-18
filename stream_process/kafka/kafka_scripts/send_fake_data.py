@@ -173,7 +173,7 @@ def send_data():
         try:
             producer.send('CLV_system_nhtrung', value=data)
             # print(f"Sent message {index}: {data}")
-            time.sleep(10)  # Thêm độ trễ nếu cần
+            time.sleep(20)  # Thêm độ trễ nếu cần
         except Exception as e:
             print(f"Error in sending data {index}: {e}")
     

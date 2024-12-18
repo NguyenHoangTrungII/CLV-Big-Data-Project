@@ -512,6 +512,78 @@ def spark_processing(spark):
 
     print("Processing complete!")
 
+def spark_processing_v2(spark):
+    """
+    Main program for data processing.
+    """
+    # Create SparkSession
+    spark = spark
+
+    # File paths for input/output in HDFS
+    input_path = "hdfs://localhost:9000/batch-layer/raw_data.csv"
+    output_path = "hdfs://localhost:9000/path/to/processed_data.csv"
+
+    # Read data from HDFS
+    print("Reading data from HDFS...")
+    df = read_data_from_hdfs(spark, input_path)
+
+    # Clean and process the data
+    print("Cleaning and processing the data...")
+
+
+
+    # Display results
+    print("Processed data:")
+    # processed_df.show(10)
+
+    # Save the processed data to HDFS
+    print("Saving the processed data to HDFS...")
+    # save_data_to_hdfs(processed_df, output_path)
+    save_data_to_postgresql(processed_df)
+
+# def process_batch(batch_df, batch_id, predict_udf):
+#     if batch_df.isEmpty():
+#         print(f"Batch {batch_id} is empty!")
+#         return
+        
+#     batch_df = transform_kafka_data_to_dataframe(batch_df)
+
+#     # Xử lý batch
+#     try:
+#         # processed_df_before =[]
+#         processed_df_before = clean_and_transform_data_v2(batch_df)
+#         processed_df = process_streaming_features(processed_df_before)
+#         print("processed_df", processed_df.show())
+#     except Exception as e:
+#         logger.error(f"Error during pre-data for prediction: {e}")
+
+#    # Thực hiện dự đoán với mô hình ML
+#     try:
+#         features = processed_df.toPandas()
+#         print("processed_df", features.head())
+
+
+#         df_with_predictions = processed_df_before
+
+#         print("Features (Pandas DataFrame) Info:")
+#         print(features.info())  
+#         print("Features Head:")
+#         print(features.head())  
+#         predictions = model.predict(features)
+
+#         prediction_value = float(predictions[0][0])
+
+#         df_with_predictions = df_with_predictions.withColumn(
+#             "CLV_Prediction", lit(prediction_value)
+#         )
+
+
+
+
+#     except Exception as e:
+#         logger.error(f"Error during model prediction: {e}")
+
+
 def write_to_hbase(dataframe, table_name='hbase-clv'):
     """
     Write Spark DataFrame to HBase with custom column mappings and rowkey generation.

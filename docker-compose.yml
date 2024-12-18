@@ -82,7 +82,7 @@ services:
       - zookeeper3
     env_file:
       - ./stream_process/hbase_distribute/hbase-distributed-local.env
-    command: /bin/sh -c "/usr/local/hbase/bin/hbase master start && /usr/local/hbase/bin/hbase-daemon.sh start thrift && tail -f /dev/null"
+    command: /bin/sh -c "/usr/local/hbase/bin/hbase master start & /usr/local/hbase/bin/hbase-daemon.sh start thrift && tail -f /dev/null"
     networks:
       - hbase-network
 
@@ -106,7 +106,7 @@ services:
       - hbase-master
     env_file:
       - ./stream_process/hbase_distribute/hbase-distributed-local.env
-    command: /bin/sh -c "/usr/local/hbase/bin/hbase regionserver start && /usr/local/hbase/bin/hbase-daemon.sh start thrift && tail -f /dev/null"
+    command: /bin/sh -c "/usr/local/hbase/bin/hbase regionserver start & /usr/local/hbase/bin/hbase-daemon.sh start thrift && tail -f /dev/null"
     networks:
       - hbase-network
 

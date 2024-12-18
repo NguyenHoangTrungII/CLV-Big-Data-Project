@@ -3,18 +3,27 @@
     <canvas baseChart
       [datasets]="chartData.datasets"
       [labels]="chartData.labels"
-      [options]="chartOptions">
+      [options]="chartOptions"
+      class="full-width"
+      >
     </canvas>
   </div>
 
   <div class="leaderboard-container">
-    <h3>Top 10 Users by CLV</h3>
+    <h3>Top 5 Users by CLV</h3>
     <ul>
-      <li *ngFor="let user of chartData.labels; let i = index">
-        <div class="position">{{ i + 1 }}</div>
-        <span>{{ user }}</span>
+      <li *ngFor="let user of users; let i = index" >
+        <div class="position">{{ user.rank + 1 }}</div>
+        <span>{{ user.name }}</span>
         <span>{{ chartData.datasets[0].data[i] }}</span>
+        <span>
+          <i *ngIf="user.change === 'up'" class="icon up">&#9650;</i>
+          <i *ngIf="user.change === 'down'" class="icon down">&#9660;</i>
+          <i *ngIf="user.change === 'none'" class="icon none">&#8212;</i>
+          <i *ngIf="user.change === 'new'" class="icon new">NEW</i>
+        </span>
       </li>
     </ul>
   </div>
+  
 </div>
