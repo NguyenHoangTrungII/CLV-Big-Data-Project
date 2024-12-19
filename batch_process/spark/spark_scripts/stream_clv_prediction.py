@@ -43,7 +43,7 @@ except Exception as pool_err:
 
 # Kafka configuration
 KAFKA_TOPIC = 'CLV_system_nhtrung'
-KAFKA_BOOTSTRAP_SERVERS = '172.27.179.20:9093'
+KAFKA_BOOTSTRAP_SERVERS = 'localhost:9093'
 
 # Load the model ONCE (outside any threads)
 model = None

@@ -44,14 +44,14 @@ if __name__ == "__main__":
 
     spark = SparkSession.builder \
     .appName("CLV Prediction") \
-    .master("spark://172.27.179.20:7077") \
+    .master("spark://172.31.56.16:7077") \
     .config("spark.sql.execution.arrow.pyspark.enabled", "true") \
     \
         .config("spark.jars.packages", 
         "org.apache.spark:spark-sql-kafka-0-10_2.12:3.1.2") \
     .config("hbase.zookeeper.quorum", "localhost:2181") \
     .config("zookeeper.znode.parent", "/hbase") \
-    .config("spark.driver.host", "172.27.179.20")\
+    .config("spark.driver.host", "172.31.56.16")\
     .config("spark.executor.heartbeatInterval", "60s")  \
     .config("spark.network.timeout", "120s")  \
     .config("spark.executor.memory", "2g") \

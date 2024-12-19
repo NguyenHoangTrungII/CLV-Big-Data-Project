@@ -177,7 +177,7 @@ services:
     container_name: spark-master
     environment:
       - SPARK_MODE=master
-      - SPARK_MASTER=spark://172.27.179.20:7077
+      - SPARK_MASTER=spark://172.31.56.16:7077
       # - SPARK_MASTER=spark://172.20.40.142:7077
       # - SPARK_LOCAL_HOSTNAME=172.20.40.142  # Địa chỉ IP của máy host
     ports:
@@ -196,7 +196,7 @@ services:
     container_name: spark-worker
     environment:
       - SPARK_MODE=worker
-      - SPARK_MASTER=spark://172.27.179.20:7077
+      - SPARK_MASTER=spark://172.31.56.16:7077
       - SPARK_WORKER_MEMORY=4g      # Tăng bộ nhớ (ví dụ, 4GB)
       - SPARK_WORKER_CORES=4
       # - SPARK_MASTER=spark://spark-master:7077
@@ -206,7 +206,7 @@ services:
     #   - spark-network
     ports:
       - "8081:8081"   # Spark worker UI port
-    command: ["/bin/sh", "-c", "until nc -z spark-master 7077; do echo waiting for spark-master; sleep 2; done; /usr/local/spark/sbin/start-worker.sh spark://172.27.179.20:7077"]
+    command: ["/bin/sh", "-c", "until nc -z spark-master 7077; do echo waiting for spark-master; sleep 2; done; /usr/local/spark/sbin/start-worker.sh spark://172.31.56.16:7077"]
     networks:
       - hbase-network
       
@@ -233,8 +233,10 @@ services:
       - AIRFLOW_HOME=/usr/local/airflow
       - AIRFLOW__CORE__DAGS_FOLDER=./orchestration/dags
       - PYTHONPATH=/usr/local/airflow/batch_process
+      - ENV AIRFLOW__CORE__CONFIG_FILE=/usr/local/airflow/airflow.cfg
     volumes:
       - airflow_data:/usr/local/airflow
+      # - ./airflow_config/airflow.cfg /usr/local/airflow/airflow.cfg
       - ./orchestration:/usr/local/airflow/orchestration
       - ./batch_process:/usr/local/airflow/batch_process
     depends_on:

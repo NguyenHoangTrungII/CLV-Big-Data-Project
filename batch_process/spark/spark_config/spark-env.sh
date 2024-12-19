@@ -9,6 +9,8 @@ export SPARK_WORKER_MEMORY=2g
 export SPARK_DRIVER_MEMORY=2g
 export SPARK_EXECUTOR_MEMORY=2g
 export SPARK_WORKER_OPTS="-Dspark.worker.cleanup.enabled=false -Dspark.worker.register.timeout=600"
+# export PYSPARK_PYTHON=/usr/bin/python3.10
+# export PYSPARK_DRIVER_PYTHON=/usr/bin/python3.10
       
 # export SPARK_MASTER_IP=$(ip route get 1.1.1.1 | awk '{print $NF;exit}') # Get the container's IP
 # export SPARK_LOCAL_IP=$SPARK_MASTER_IP

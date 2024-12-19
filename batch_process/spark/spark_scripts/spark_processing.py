@@ -11,12 +11,26 @@ def create_spark_session():
     """
     Create a SparkSession.
     """
+
     spark = SparkSession.builder \
-        .appName("Data Cleaning and Transformation") \
-        .config("spark.hadoop.fs.defaultFS", "hdfs://namenode:9000") \
-        .config("spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.1.2") \
-        .config("spark.jars.packages", "org.postgresql:postgresql:42.5.0") \
-        .getOrCreate()
+    .appName("CLV Prediction") \
+    .master("spark://172.31.56.16:7077") \
+    .config("spark.hadoop.fs.defaultFS", "hdfs://namenode:9000") \
+    .config("spark.sql.execution.arrow.pyspark.enabled", "true") \
+    \
+        .config("spark.jars.packages", 
+        "org.apache.spark:spark-sql-kafka-0-10_2.12:3.1.2") \
+    .config("hbase.zookeeper.quorum", "localhost:2181") \
+    .config("zookeeper.znode.parent", "/hbase") \
+    .config("spark.driver.host", "172.31.56.16")\
+    .config("spark.executor.heartbeatInterval", "60s")  \
+    .config("spark.network.timeout", "120s")  \
+    .config("spark.executor.memory", "2g") \
+    .config("spark.driver.memory", "2g") \
+    .config("spark.cores.max", "4")  \
+    .config("spark.sql.shuffle.partitions", "100") \
+    .getOrCreate()
+
     return spark
 
 def read_data_from_hdfs(spark, file_path):
@@ -31,6 +45,56 @@ def read_data_from_hdfs(spark, file_path):
     """
     df = spark.read.csv(file_path, header=True, inferSchema=True)
     return df
+
+def read_format_json_from_hdfs(spark, file_path):
+    """
+    Read data from HDFS.
+    Args:
+        spark: SparkSession instance.
+        file_path: Path to the file in HDFS.
+
+    Returns:
+        DataFrame containing the data.
+    """
+    try:
+        raw_df = spark.read.option("multiline","true").json(file_path)
+        print("Data successfully read from HDFS.")
+    except Exception as e:
+        print(f"Error reading data from HDFS: {e}")
+        return None
+    
+     # Explode the `Items` array into rows
+    exploded_df = raw_df.withColumn("Items", raw_df["Items"]).selectExpr(
+        "InvoiceNo", "InvoiceDate", "CustomerID", "Country", "explode(Items) as Items"
+    )
+    
+    # Extract fields from `Items`
+    transformed_df = exploded_df.select(
+        "InvoiceNo",
+        "InvoiceDate",
+        "CustomerID",
+        "Country",
+        "Items.StockCode",
+        "Items.Description",
+        "Items.Quantity",
+        "Items.UnitPrice"
+    )
+
+    # Convert to a Python list of dictionaries for further processing
+    transformed_data = transformed_df.rdd.map(lambda row: {
+        'InvoiceNo': row.InvoiceNo,
+        'StockCode': row.StockCode,
+        'Description': row.Description,
+        'Quantity': row.Quantity,
+        'InvoiceDate': row.InvoiceDate,
+        'UnitPrice': row.UnitPrice,
+        'CustomerID': row.CustomerID,
+        'Country': row.Country
+    }).collect()
+
+    print("data from batch_layer", transformed_data )
+    
+    return transformed_data
 
 def clean_and_transform_data(df):
     """
@@ -517,18 +581,22 @@ def spark_processing_v2(spark):
     Main program for data processing.
     """
     # Create SparkSession
-    spark = spark
+    # spark = spark
 
     # File paths for input/output in HDFS
-    input_path = "hdfs://localhost:9000/batch-layer/raw_data.csv"
-    output_path = "hdfs://localhost:9000/path/to/processed_data.csv"
+    input_path = "hdfs://namnode:9000/batch-layer/raw_data.json"
+    # output_path = "hdfs://namenode:9000/path/to/processed_data.csv"
 
     # Read data from HDFS
     print("Reading data from HDFS...")
-    df = read_data_from_hdfs(spark, input_path)
+    # df = read_data_from_hdfs(spark, input_path)
+    df =read_format_json_from_hdfs(spark, input_path)
+
+    print("data from spark", df.show())
 
     # Clean and process the data
     print("Cleaning and processing the data...")
+
 
 
 
@@ -539,7 +607,7 @@ def spark_processing_v2(spark):
     # Save the processed data to HDFS
     print("Saving the processed data to HDFS...")
     # save_data_to_hdfs(processed_df, output_path)
-    save_data_to_postgresql(processed_df)
+    # save_data_to_postgresql(processed_df)
 
 # def process_batch(batch_df, batch_id, predict_udf):
 #     if batch_df.isEmpty():

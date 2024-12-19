@@ -19,3 +19,4 @@ def read_data_from_hdfs():
     except Exception as e:
         print(f"Error reading data from HDFS: {e}")
         return pd.DataFrame()
+    

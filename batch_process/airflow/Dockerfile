@@ -24,7 +24,7 @@ RUN pip install "apache-airflow[postgres,celery]==${AIRFLOW_VERSION}" --constrai
 RUN pip install pandas kafka-python tensorflow happybase hdfs pyspark numpy
 
 # Sao chép tệp cấu hình Airflow (nếu có)
-COPY ./airflow_config/airflow.cfg $AIRFLOW_HOME/airflow.cfg
+COPY ./airflow_config/airflow.cfg /usr/local/airflow/airflow.cfg
 
 # Expose cổng webserver của Airflow
 EXPOSE 8080

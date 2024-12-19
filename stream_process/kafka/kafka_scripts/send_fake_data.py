@@ -164,7 +164,7 @@ def send_data():
     
     # Thiết lập Kafka producer
     producer = KafkaProducer(
-        bootstrap_servers='172.27.179.20:9093',
+        bootstrap_servers='172.31.56.16:9093',
         value_serializer=lambda v: json.dumps(v).encode('utf-8')
     )
 

@@ -1,3 +1,5 @@
+import json
+
 import pandas as pd
 from hdfs import InsecureClient
 from kafka import KafkaConsumer
@@ -70,6 +72,50 @@ def store_data_in_hdfs(transaction_data):
     except Exception as e:
         print(f"Error saving data to HDFS: {e}")
 
+def store_data_as_json_in_hdfs(transaction_data):
+    # Convert transaction data to JSON format
+    transaction_json = json.dumps(transaction_data, indent=4)  # Convert to pretty JSON string
+    
+    # Connect to HDFS
+    hdfs_host = 'localhost'
+    hdfs_port = 50070
+    client = InsecureClient(f'http://{hdfs_host}:{hdfs_port}', user='root')
+
+    # Ensure the directory exists
+    try:
+        client.makedirs('/batch-layer')  # Create directory if it does not exist
+    except Exception as e:
+        print(f"Error creating directory: {e}")
+
+    # Path to the JSON file in HDFS
+    file_path = '/batch-layer/raw_data.json'
+    
+    try:
+        # Check if the file exists in HDFS
+        if client.status(file_path, strict=False):
+            # File exists, read and append new data
+            with client.read(file_path) as reader:
+                existing_data = json.load(reader)
+            
+            # Append the new transaction to the existing data
+            if isinstance(existing_data, list):
+                existing_data.append(transaction_data)
+            else:
+                existing_data = [existing_data, transaction_data]
+            
+            # Convert back to JSON string
+            combined_json = json.dumps(existing_data, indent=4)
+        else:
+            # If file doesn't exist, start fresh with new data
+            combined_json = json.dumps([transaction_data], indent=4)
+
+        # Write the JSON data back to HDFS
+        with client.write(file_path, encoding='utf-8', overwrite=True) as writer:
+            writer.write(combined_json)
+        print("Data has been saved to HDFS as JSON:", transaction_data)
+    except Exception as e:
+        print(f"Error saving data to HDFS: {e}")
+
 def consume_hdfs():
     # # Configure Kafka
     # bootstrap_servers = 'localhost:9093'
@@ -96,7 +142,7 @@ def consume_hdfs():
         try:
             data = message.value
             data = ast.literal_eval(data)  # Convert string to dict
-            store_data_in_hdfs(data)
+            store_data_as_json_in_hdfs(data)
             print("Data has been saved to HDFS:", data)
             print("-------------------")
         except (json.JSONDecodeError, ValueError) as e:
