@@ -1,22 +1,44 @@
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import from_json, explode, col, regexp_replace, to_timestamp, hour, dayofweek, when, unix_timestamp
+from pyspark.sql.functions import lit, from_json, explode, col, regexp_replace, to_timestamp, hour, dayofweek, when, unix_timestamp
 from pyspark.sql.types import StructType, StructField, StringType, ArrayType, IntegerType, DoubleType, BooleanType,IntegerType, FloatType
 from pyspark.sql import functions as F
 from datetime import datetime
+from tensorflow import keras
 
-from batch_process.postgres.save_preprocessed_data import save_data_to_postgresql
+from batch_process.postgres.save_preprocessed_data import save_data_to_postgresql, save_to_postgres
 from batch_process.model.model_update import load_and_finetune_model
+
+
+import os
+import logging
+
+# Initialize logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Load the model ONCE (outside any threads)
+model = None
+try:
+    model = keras.models.load_model('/home/nhtrung/CLV-Big-Data-Project/stream_process/model/CLV_V3.keras', compile=False)
+    logger.info("Model loaded successfully.")
+except Exception as e:
+    logger.error(f"Error loading model: {e}")
+    exit(1)
 
 def create_spark_session():
     """
     Create a SparkSession.
     """
 
+    os.environ['PYSPARK_PYTHON'] = "/usr/local/bin/python3.10"
+    os.environ['PYSPARK_DRIVER_PYTHON'] = "/usr/local/bin/python3.10"
+
     spark = SparkSession.builder \
     .appName("CLV Prediction") \
     .master("spark://172.31.56.16:7077") \
     .config("spark.hadoop.fs.defaultFS", "hdfs://namenode:9000") \
     .config("spark.sql.execution.arrow.pyspark.enabled", "true") \
+    .config("spark.jars", "/home/nhtrung/CLV-Big-Data-Project/batch_process/spark/jar/postgresql-42.7.4.jar") \
     \
         .config("spark.jars.packages", 
         "org.apache.spark:spark-sql-kafka-0-10_2.12:3.1.2") \
@@ -57,7 +79,22 @@ def read_format_json_from_hdfs(spark, file_path):
         DataFrame containing the data.
     """
     try:
-        raw_df = spark.read.option("multiline","true").json(file_path)
+
+        # Định nghĩa schema tường minh cho dữ liệu
+        schema = StructType([
+            StructField("InvoiceNo", StringType(), True),
+            StructField("InvoiceDate", StringType(), True),
+            StructField("CustomerID", StringType(), True),
+            StructField("Country", StringType(), True),
+            StructField("Items", ArrayType(StructType([
+                StructField("StockCode", StringType(), True),
+                StructField("Description", StringType(), True),
+                StructField("Quantity", FloatType(), True),
+                StructField("UnitPrice", FloatType(), True)
+            ])), True)
+        ])
+
+        raw_df = spark.read.option("multiline","true").schema(schema).json(file_path)
         print("Data successfully read from HDFS.")
     except Exception as e:
         print(f"Error reading data from HDFS: {e}")
@@ -79,9 +116,10 @@ def read_format_json_from_hdfs(spark, file_path):
         "Items.Quantity",
         "Items.UnitPrice"
     )
+    
 
-    # Convert to a Python list of dictionaries for further processing
-    transformed_data = transformed_df.rdd.map(lambda row: {
+    # # Convert to a Python list of dictionaries for further processing
+    transformed_rdd = transformed_df.rdd.map(lambda row: {
         'InvoiceNo': row.InvoiceNo,
         'StockCode': row.StockCode,
         'Description': row.Description,
@@ -90,11 +128,14 @@ def read_format_json_from_hdfs(spark, file_path):
         'UnitPrice': row.UnitPrice,
         'CustomerID': row.CustomerID,
         'Country': row.Country
-    }).collect()
+    })
 
-    print("data from batch_layer", transformed_data )
-    
-    return transformed_data
+    # transformed_data = transformed_rdd.collect()
+    final_df = spark.createDataFrame(transformed_rdd)
+
+    print("data from batch_layer", final_df )
+
+    return final_df
 
 def clean_and_transform_data(df):
     """
@@ -584,72 +625,67 @@ def spark_processing_v2(spark):
     # spark = spark
 
     # File paths for input/output in HDFS
-    input_path = "hdfs://namnode:9000/batch-layer/raw_data.json"
+    input_path = "hdfs://namenode:9000/batch-layer/raw_data.json"
     # output_path = "hdfs://namenode:9000/path/to/processed_data.csv"
 
     # Read data from HDFS
     print("Reading data from HDFS...")
     # df = read_data_from_hdfs(spark, input_path)
-    df =read_format_json_from_hdfs(spark, input_path)
+    batch_df =read_format_json_from_hdfs(spark, input_path)
 
-    print("data from spark", df.show())
+    # print("data from spark", df.show())
 
     # Clean and process the data
     print("Cleaning and processing the data...")
+    processed_df_before = clean_and_transform_data_v2(batch_df)
+    processed_df = process_streaming_features(processed_df_before)
 
 
+    # Thực hiện dự đoán với mô hình ML
+    try:
+        features = processed_df.toPandas()
+        # features = processed_df_before.toPandas()
+        print("processed_df", features.head())
 
 
-    # Display results
-    print("Processed data:")
-    # processed_df.show(10)
+        df_with_predictions = processed_df_before
 
-    # Save the processed data to HDFS
-    print("Saving the processed data to HDFS...")
-    # save_data_to_hdfs(processed_df, output_path)
-    # save_data_to_postgresql(processed_df)
+        print("Features (Pandas DataFrame) Info:")
+        print(features.info())  # In thông tin chi tiết
+        print("Features Head:")
+        print(features.head())  # In một vài dòng đầu tiên        
+        predictions = model.predict(features)
 
-# def process_batch(batch_df, batch_id, predict_udf):
-#     if batch_df.isEmpty():
-#         print(f"Batch {batch_id} is empty!")
-#         return
-        
-#     batch_df = transform_kafka_data_to_dataframe(batch_df)
+        prediction_value = float(predictions[0][0])
 
-#     # Xử lý batch
-#     try:
-#         # processed_df_before =[]
-#         processed_df_before = clean_and_transform_data_v2(batch_df)
-#         processed_df = process_streaming_features(processed_df_before)
-#         print("processed_df", processed_df.show())
-#     except Exception as e:
-#         logger.error(f"Error during pre-data for prediction: {e}")
+        # df_with_predictions["CLV_Prediction"] = predictions[0][0] 
+        df_with_predictions = df_with_predictions.withColumn(
+            "CLV_Prediction", lit(prediction_value)
+        ) 
 
-#    # Thực hiện dự đoán với mô hình ML
-#     try:
-#         features = processed_df.toPandas()
-#         print("processed_df", features.head())
+        columns_to_drop = ["hour", "dayofweek", "weekend"]
+        df_with_predictions = df_with_predictions.drop(*columns_to_drop)
+
+        df_with_predictions = df_with_predictions.withColumn("InvoiceDate", to_timestamp("InvoiceDate"))
+
+        print("data with predict", df_with_predictions.show())
+        print("data with predict", df_with_predictions.printSchema())
 
 
-#         df_with_predictions = processed_df_before
+        db_url = "jdbc:postgresql://172.20.0.8:5432/airflow"
 
-#         print("Features (Pandas DataFrame) Info:")
-#         print(features.info())  
-#         print("Features Head:")
-#         print(features.head())  
-#         predictions = model.predict(features)
+        db_properties = {
+        "user": "postgres",
+        "password": "123",
+        "driver": "org.postgresql.Driver"
+        }
 
-#         prediction_value = float(predictions[0][0])
-
-#         df_with_predictions = df_with_predictions.withColumn(
-#             "CLV_Prediction", lit(prediction_value)
-#         )
+        save_to_postgres(df_with_predictions, "sales_data_order", db_url, db_properties)
 
 
+    except Exception as e:
+        print(f"Error during model prediction: {e}")
 
-
-#     except Exception as e:
-#         logger.error(f"Error during model prediction: {e}")
 
 
 def write_to_hbase(dataframe, table_name='hbase-clv'):

@@ -18,3 +18,32 @@
 -- INSERT INTO users (name, email) VALUES
 -- ('Alice', 'alice@example.com'),
 -- ('Bob', 'bob@example.com');
+
+
+CREATE TABLE sales_data (
+    Country TEXT,
+    CustomerID FLOAT,
+    Description TEXT,
+    InvoiceDate TIMESTAMP,
+    InvoiceNo TEXT,
+    Quantity INTEGER,
+    StockCode TEXT,
+    UnitPrice FLOAT,
+    Revenue FLOAT,
+    CLV_Prediction FLOAT
+);
+
+
+CREATE TABLE sales_data_order(
+    Country VARCHAR(255),
+    CustomerID VARCHAR(255),
+    Description TEXT,
+    InvoiceDate TIMESTAMP,
+    InvoiceNo VARCHAR(255),
+    Quantity INT,
+    StockCode VARCHAR(255),
+    UnitPrice FLOAT,
+    Revenue FLOAT,
+    CLV_Prediction DOUBLE PRECISION NOT NULL
+);
+

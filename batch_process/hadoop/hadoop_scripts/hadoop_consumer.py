@@ -68,7 +68,7 @@ def store_data_in_hdfs(transaction_data):
 
             # Ensure we're writing the data as bytes, not a string
             writer.write(content)
-        print("Data has been saved to HDFS:", data)
+        # print("Data has been saved to HDFS:", data)
     except Exception as e:
         print(f"Error saving data to HDFS: {e}")
 
@@ -112,7 +112,7 @@ def store_data_as_json_in_hdfs(transaction_data):
         # Write the JSON data back to HDFS
         with client.write(file_path, encoding='utf-8', overwrite=True) as writer:
             writer.write(combined_json)
-        print("Data has been saved to HDFS as JSON:", transaction_data)
+        # print("Data has been saved to HDFS as JSON:", transaction_data)
     except Exception as e:
         print(f"Error saving data to HDFS: {e}")
 
@@ -143,7 +143,7 @@ def consume_hdfs():
             data = message.value
             data = ast.literal_eval(data)  # Convert string to dict
             store_data_as_json_in_hdfs(data)
-            print("Data has been saved to HDFS:", data)
+            # print("Data has been saved to HDFS:", data)
             print("-------------------")
         except (json.JSONDecodeError, ValueError) as e:
             print(f"Error decoding data: {e}")
