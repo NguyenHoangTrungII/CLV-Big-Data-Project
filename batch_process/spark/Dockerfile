@@ -41,9 +41,7 @@ ENV SPARK_LOCAL_IP=localhost
 # Chuyển các tệp cấu hình Spark vào container (nếu có)
 COPY ./spark_config/spark-defaults.conf /usr/local/spark/conf/
 COPY ./spark_config/spark-env.sh /usr/local/spark/conf/
+COPY ./spark_config/fair-scheduler.xml /usr/local/spark/conf/
 
 # Expose các cổng cần thiết cho Spark
 EXPOSE 4040 7077 8080 8081
-
-# Lệnh khởi động Spark master trong chế độ foreground
-# CMD ["/usr/local/spark/sbin/start-master.sh", "org.apache.spark.deploy.master.Master"]

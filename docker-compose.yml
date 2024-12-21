@@ -185,6 +185,8 @@ services:
       - "8080:8080"   # Spark UI port
     # networks:
     #   - spark-network
+    volumes:
+    - ./batch_process/spark/spark_config/fair-scheduler.xml:/usr/local/spark/conf/fair-scheduler.xml
     command: ["/usr/local/spark/sbin/start-master.sh", "--host", "0.0.0.0", "--port", "7077", "--webui-port", "8080"]
     networks:
       - hbase-network
@@ -204,6 +206,8 @@ services:
       - spark-master
     # networks:
     #   - spark-network
+    volumes:
+    - ./batch_process/spark/spark_config/fair-scheduler.xml:/usr/local/spark/conf/fair-scheduler.xml
     ports:
       - "8081:8081"   # Spark worker UI port
     command: ["/bin/sh", "-c", "until nc -z spark-master 7077; do echo waiting for spark-master; sleep 2; done; /usr/local/spark/sbin/start-worker.sh spark://172.31.56.16:7077"]
@@ -231,14 +235,14 @@ services:
       - "8082:8080"
     environment:
       - AIRFLOW_HOME=/usr/local/airflow
-      - AIRFLOW__CORE__DAGS_FOLDER=./orchestration/dags
+      - AIRFLOW__CORE__DAGS_FOLDER=/usr/local/airflow/orchestration/dags
       - PYTHONPATH=/usr/local/airflow/batch_process
       - ENV AIRFLOW__CORE__CONFIG_FILE=/usr/local/airflow/airflow.cfg
     volumes:
       - airflow_data:/usr/local/airflow
       # - ./airflow_config/airflow.cfg /usr/local/airflow/airflow.cfg
       - ./orchestration:/usr/local/airflow/orchestration
-      - ./batch_process:/usr/local/airflow/batch_process
+      - /home/nhtrung/CLV-Big-Data-Project/batch_process:/usr/local/airflow/batch_process
     depends_on:
       - postgres
     networks:

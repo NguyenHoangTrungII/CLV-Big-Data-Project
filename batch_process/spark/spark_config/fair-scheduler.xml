@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<allocations>
+  <queue name="streaming">
+    <weight>2</weight>
+    <minResources>2g,2</minResources>
+  </queue>
+  <queue name="batch">
+    <weight>1</weight>
+    <minResources>1g,1</minResources>
+  </queue>
+</allocations>

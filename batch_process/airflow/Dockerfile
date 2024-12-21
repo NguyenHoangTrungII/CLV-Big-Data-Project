@@ -30,4 +30,4 @@ COPY ./airflow_config/airflow.cfg /usr/local/airflow/airflow.cfg
 EXPOSE 8080
 
 # Chạy Airflow webserver mặc định
-ENTRYPOINT ["bash", "-c", "airflow db init || true && airflow webserver --port 8080"]
+# ENTRYPOINT ["bash", "-c", "airflow db init || true && airflow webserver --port 8080"]

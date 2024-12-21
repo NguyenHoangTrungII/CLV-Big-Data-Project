@@ -17,13 +17,13 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Load the model ONCE (outside any threads)
-model = None
-try:
-    model = keras.models.load_model('/home/nhtrung/CLV-Big-Data-Project/stream_process/model/CLV_V3.keras', compile=False)
-    logger.info("Model loaded successfully.")
-except Exception as e:
-    logger.error(f"Error loading model: {e}")
-    exit(1)
+# model = None
+# try:
+#     model = keras.models.load_model('/home/nhtrung/CLV-Big-Data-Project/stream_process/model/CLV_V3.keras', compile=False)
+#     logger.info("Model loaded successfully.")
+# except Exception as e:
+#     logger.error(f"Error loading model: {e}")
+#     exit(1)
 
 def create_spark_session():
     """
@@ -38,22 +38,68 @@ def create_spark_session():
     .master("spark://172.31.56.16:7077") \
     .config("spark.hadoop.fs.defaultFS", "hdfs://namenode:9000") \
     .config("spark.sql.execution.arrow.pyspark.enabled", "true") \
-    .config("spark.jars", "/home/nhtrung/CLV-Big-Data-Project/batch_process/spark/jar/postgresql-42.7.4.jar") \
     \
-        .config("spark.jars.packages", 
-        "org.apache.spark:spark-sql-kafka-0-10_2.12:3.1.2") \
+    .config("spark.jars", "/home/nhtrung/CLV-Big-Data-Project/batch_process/spark/jar/postgresql-42.7.4.jar") \
+    .config("spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.1.2") \
+    \
     .config("hbase.zookeeper.quorum", "localhost:2181") \
     .config("zookeeper.znode.parent", "/hbase") \
     .config("spark.driver.host", "172.31.56.16")\
     .config("spark.executor.heartbeatInterval", "60s")  \
     .config("spark.network.timeout", "120s")  \
     .config("spark.executor.memory", "2g") \
+    .config("spark.executor.cores", "2") \
     .config("spark.driver.memory", "2g") \
     .config("spark.cores.max", "4")  \
+    .config("spark.task.cpus", "1") \
     .config("spark.sql.shuffle.partitions", "100") \
     .getOrCreate()
 
     return spark
+
+# def create_spark_session(job_type: str):
+#     """
+#     Create a SparkSession.
+#     """
+
+#     os.environ['PYSPARK_PYTHON'] = "/usr/local/bin/python3.10"
+#     os.environ['PYSPARK_DRIVER_PYTHON'] = "/usr/local/bin/python3.10"
+
+#     spark = SparkSession.builder \
+#     .appName(f"CLV Prediction - {job_type}") \
+#     .master("spark://172.31.56.16:7077") \
+#     .config("spark.hadoop.fs.defaultFS", "hdfs://namenode:9000") \
+#     .config("spark.sql.execution.arrow.pyspark.enabled", "true") \
+#     \
+#     .config("spark.jars", "/home/nhtrung/CLV-Big-Data-Project/batch_process/spark/jar/postgresql-42.7.4.jar") \
+#     .config("spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.1.2") \
+#     \
+#     .config("hbase.zookeeper.quorum", "localhost:2181") \
+#     .config("zookeeper.znode.parent", "/hbase") \
+#     .config("spark.driver.host", "172.31.56.16")\
+#     .config("spark.executor.heartbeatInterval", "60s")  \
+#     .config("spark.network.timeout", "120s")  \
+#     .config("spark.executor.memory", "2g") \
+#     .config("spark.executor.cores", "2") \
+#     .config("spark.driver.memory", "2g") \
+#     .config("spark.cores.max", "4")  \
+#     .config("spark.task.cpus", "1") \
+#     .config("spark.sql.shuffle.partitions", "100") \
+#     \
+#     .config("spark.shuffle.service.enabled", "true") \
+#     \
+#     .config("spark.dynamicAllocation.enabled", "true") \
+#     .config("spark.dynamicAllocation.minExecutors", "2") \
+#     .config("spark.dynamicAllocation.maxExecutors", "4") \
+#     .config("spark.dynamicAllocation.executorIdleTimeout", "60s") \
+#     \
+#     .config("spark.scheduler.mode", "FAIR") \
+#     \
+#     .config("spark.scheduler.pool", job_type) \
+#     .getOrCreate()
+
+#     return spark
+
 
 def read_data_from_hdfs(spark, file_path):
     """
@@ -640,51 +686,53 @@ def spark_processing_v2(spark):
     processed_df_before = clean_and_transform_data_v2(batch_df)
     processed_df = process_streaming_features(processed_df_before)
 
+    print("Cleaning and processing the data...", processed_df)
+
 
     # Thực hiện dự đoán với mô hình ML
-    try:
-        features = processed_df.toPandas()
-        # features = processed_df_before.toPandas()
-        print("processed_df", features.head())
+    # try:
+    #     features = processed_df.toPandas()
+    #     # features = processed_df_before.toPandas()
+    #     print("processed_df", features.head())
 
 
-        df_with_predictions = processed_df_before
+    #     df_with_predictions = processed_df_before
 
-        print("Features (Pandas DataFrame) Info:")
-        print(features.info())  # In thông tin chi tiết
-        print("Features Head:")
-        print(features.head())  # In một vài dòng đầu tiên        
-        predictions = model.predict(features)
+    #     print("Features (Pandas DataFrame) Info:")
+    #     print(features.info())  # In thông tin chi tiết
+    #     print("Features Head:")
+    #     print(features.head())  # In một vài dòng đầu tiên        
+    #     predictions = model.predict(features)
 
-        prediction_value = float(predictions[0][0])
+    #     prediction_value = float(predictions[0][0])
 
-        # df_with_predictions["CLV_Prediction"] = predictions[0][0] 
-        df_with_predictions = df_with_predictions.withColumn(
-            "CLV_Prediction", lit(prediction_value)
-        ) 
+    #     # df_with_predictions["CLV_Prediction"] = predictions[0][0] 
+    #     df_with_predictions = df_with_predictions.withColumn(
+    #         "CLV_Prediction", lit(prediction_value)
+    #     ) 
 
-        columns_to_drop = ["hour", "dayofweek", "weekend"]
-        df_with_predictions = df_with_predictions.drop(*columns_to_drop)
+    #     columns_to_drop = ["hour", "dayofweek", "weekend"]
+    #     df_with_predictions = df_with_predictions.drop(*columns_to_drop)
 
-        df_with_predictions = df_with_predictions.withColumn("InvoiceDate", to_timestamp("InvoiceDate"))
+    #     df_with_predictions = df_with_predictions.withColumn("InvoiceDate", to_timestamp("InvoiceDate"))
 
-        print("data with predict", df_with_predictions.show())
-        print("data with predict", df_with_predictions.printSchema())
-
-
-        db_url = "jdbc:postgresql://172.20.0.8:5432/airflow"
-
-        db_properties = {
-        "user": "postgres",
-        "password": "123",
-        "driver": "org.postgresql.Driver"
-        }
-
-        save_to_postgres(df_with_predictions, "sales_data_order", db_url, db_properties)
+    #     print("data with predict", df_with_predictions.show())
+    #     print("data with predict", df_with_predictions.printSchema())
 
 
-    except Exception as e:
-        print(f"Error during model prediction: {e}")
+    #     db_url = "jdbc:postgresql://172.20.0.8:5432/airflow"
+
+    #     db_properties = {
+    #     "user": "postgres",
+    #     "password": "123",
+    #     "driver": "org.postgresql.Driver"
+    #     }
+
+    #     save_to_postgres(df_with_predictions, "sales_data_order", db_url, db_properties)
+
+
+    # except Exception as e:
+    #     print(f"Error during model prediction: {e}")
 
 
 

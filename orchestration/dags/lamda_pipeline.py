@@ -15,3 +15,18 @@
 #     )
 
 # batch_layer_task
+
+
+from airflow import DAG
+from airflow.operators.dummy_operator import DummyOperator
+from datetime import datetime
+
+default_args = {
+    'owner': 'airflow',
+    'depends_on_past': False,
+    'start_date': datetime(2023, 1, 1),
+    'retries': 1,
+}
+
+with DAG('example_dag', default_args=default_args, schedule_interval='@daily') as dag:
+    start_task = DummyOperator(task_id='start_task')
