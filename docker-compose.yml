@@ -231,13 +231,23 @@ services:
     build:
       context: ./batch_process/airflow
     container_name: airflow
+    # runtime: nvidia
     ports:
       - "8082:8080"
+    # deploy:
+    # resources:
+    #   reservations:
+    #     devices:
+    #       - driver: nvidia
+    #         count: all  # Hoặc số lượng GPU bạn muốn sử dụng
+    #         capabilities: [gpu]
     environment:
+      - NVIDIA_VISIBLE_DEVICES=all
       - AIRFLOW_HOME=/usr/local/airflow
       - AIRFLOW__CORE__DAGS_FOLDER=/usr/local/airflow/orchestration/dags
       - PYTHONPATH=/usr/local/airflow/batch_process
       - ENV AIRFLOW__CORE__CONFIG_FILE=/usr/local/airflow/airflow.cfg
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
     volumes:
       - airflow_data:/usr/local/airflow
       # - ./airflow_config/airflow.cfg /usr/local/airflow/airflow.cfg
